@@ -1,0 +1,4 @@
+All tutorials should be written in .ipynb files.
+Each .ipynb is converted to md using nbconvert.
+
+  $ python -m jupyter nbconvert --to markdown [filename]
