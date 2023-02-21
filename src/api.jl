@@ -244,12 +244,10 @@ function fit_mcmc!(
         callback_fn::Function=(; kwargs...) -> nothing)
     n_particles = num_particles(model)
     accepted = Vector{Bool}(undef, n_particles)
-    elapses = Vector{Float64}(undef, n_particles)
-    elapsed = 0.
+    elapsed = zeros(n_particles)
     for step=1:n_mcmc
         Threads.@threads for i=1:n_particles
-            elapses[i] = 0.
-            TimeIt.@timeit elapses[i] begin
+            TimeIt.@timeit elapsed[i] begin
                 trace = model.pf_state.traces[i]
                 observations = get_observations_choicemap(trace)
                 trace, stats = Inference.rejuvenate_particle_structure(
@@ -260,7 +258,6 @@ function fit_mcmc!(
                 accepted[i] = (stats[:mh] > 0)
             end
         end
-        elapsed += maximum(elapses)
         any(accepted) && callback_fn(model=model, step=step, elapsed=elapsed)
     end
 end

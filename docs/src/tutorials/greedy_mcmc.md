@@ -126,6 +126,7 @@ figures = []
 function fn_callback(; kwargs...)
     model = kwargs[:model]
     step = kwargs[:step]
+    elapsed = kwargs[:elapsed]
 
     ds_query = vcat(model.ds, (20:.1:100))
     predictions = AutoGP.predict(model, ds_query; quantiles=[0.025, 0.975])
@@ -147,7 +148,7 @@ function fn_callback(; kwargs...)
         cov = AutoGP.covariance_kernels(model)[i]
         Base.show(io, MIME("text/plain"), cov)
         cov_str = String(take!(io))
-        ax.set_title("Step $(step)\n$(cov_str)", ha="left")
+        ax.set_title("Step $(step)\nElapsed $(elapsed[i])\n$(cov_str)", ha="left")
     end
     push!(figures, fig)
     plt.close(fig)
@@ -195,7 +196,7 @@ display(figures[end])
 
 ### MCMC vs SMC
 
-MCMC sampling using [`fit_mcmc!`] invokes the same transition kernels over structure and parameters as those used in particle rejuvenation step of [`AutoGP.fit_smc!`](@ref).  The fundamental difference is that [`AutoGP.fit_smc!`](@ref) anneals the posterior over subsets of data at each step, whereas [`AutoGP.fit_mcmc!`](@ref) uses the full data at each step.
+MCMC sampling using [`fit_mcmc!`](@ref) invokes the same transition kernels over structure and parameters as those used in particle rejuvenation step of [`AutoGP.fit_smc!`](@ref).  The fundamental difference is that [`AutoGP.fit_smc!`](@ref) anneals the posterior over subsets of data at each step, whereas [`AutoGP.fit_mcmc!`](@ref) uses the full data at each step.
 
 The benefits of SMC include
 
