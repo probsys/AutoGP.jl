@@ -160,7 +160,12 @@ the observed data. Inference is performed using sequential Monte Carlo.
 - `shuffle::Bool=true`: Whether to shuffle indexes `ds` or incorporate data in the given order.
 - `adaptive_resampling::Bool=true`: If `true` resamples based on ESS threshold, else at each step.
 - `adaptive_rejuvenation::Bool=false`: If `true` rejuvenates only if resampled, else at each step.
-- `n_hmc_exit::Integer=2`: Number of successive HMC rejections before exiting.
+- `hmc_config::Dict`: Configuration for HMC inference on numeric parameters. Allowable keys are:
+    - `n_exit::Integer=1`: Number of successive rejections after which HMC loop is terminated.
+    - `L_param::Integer=10` Number of leapfrog steps for kernel parameters.
+    - `L_noise::Integer=10`: Number of leapfrog steps for noise parameter.
+    - `eps_param::Float64=0.02`: Step size for kernel parameters.
+    - `eps_noise::Float64=0.02`: Step size for noise parameter.
 - `verbose::Bool=false`: Report progress to stdout.
 - `check::Bool=false`: Perform dynamic correctness checks during inference.
 - `config::GP.GPConfig=GP.GPConfig()`: User-specific customization, refer to [`GP.GPConfig`](@ref).
@@ -175,7 +180,7 @@ function fit_smc!(
         shuffle::Bool=true,
         adaptive_resampling::Bool=true,
         adaptive_rejuvenation::Bool=false,
-        n_hmc_exit::Int=1,
+        hmc_config=(n_exit=1,),
         verbose::Bool=false,
         check::Bool=false,
         callback_fn::Function=(; kwargs...) -> nothing)
@@ -194,7 +199,7 @@ function fit_smc!(
         biased=biased,
         n_particles=num_particles(model),
         n_mcmc=n_mcmc,
-        n_hmc_exit=n_hmc_exit,
+        hmc_config=hmc_config,
         permutation=permutation,
         schedule=schedule,
         adaptive_resampling=adaptive_resampling,
@@ -237,7 +242,7 @@ function fit_mcmc!(
         model::GPModel,
         n_mcmc::Integer,
         n_hmc::Integer;
-        n_hmc_exit::Int=2,
+        hmc_config=(n_exit=2,),
         biased::Bool=false,
         verbose::Bool=false,
         check::Bool=false,
@@ -252,7 +257,7 @@ function fit_mcmc!(
                 observations = get_observations_choicemap(trace)
                 trace, stats = Inference.rejuvenate_particle_structure(
                             trace, 1, n_hmc, biased;
-                            n_hmc_exit=n_hmc_exit, verbose=verbose,
+                            hmc_config=hmc_config, verbose=verbose,
                             check=check, observations=observations)
                 model.pf_state.traces[i] = trace
                 accepted[i] = (stats[:mh] > 0)
@@ -360,7 +365,7 @@ function mcmc_structure!(
         model::GPModel,
         n_mcmc::Integer,
         n_hmc::Integer;
-        n_hmc_exit::Int=2,
+        hmc_config=(n_exit=2,),
         biased::Bool=false,
         verbose::Bool=false,
         check::Bool=false)
@@ -369,7 +374,7 @@ function mcmc_structure!(
         observations = get_observations_choicemap(trace)
         trace, stats = Inference.rejuvenate_particle_structure(
                     trace, n_mcmc, n_hmc, biased;
-                    n_hmc_exit=n_hmc_exit, verbose=verbose,
+                    hmc_config=hmc_config, verbose=verbose,
                     check=check, observations=observations)
         model.pf_state.traces[i] = trace
     end

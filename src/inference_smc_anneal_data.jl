@@ -13,7 +13,7 @@ end
 function rejuvenate_particle_parameters(
         trace::Gen.Trace,
         n_hmc::Integer;
-        n_hmc_exit::Integer=n_hmc,
+        hmc_config=Dict(),
         verbose::Bool=false,
         check::Bool=false,
         observations::ChoiceMap=EmptyChoicemap())
@@ -27,6 +27,12 @@ function rejuvenate_particle_parameters(
     ]
     # Infer noise?
     infer_noise = !Gen.has_value(observations, :noise)
+    # HMC configuration.
+    L_param   = get(hmc_config, :L_param, 10)
+    eps_param = get(hmc_config, :eps_param, .02)
+    L_noise   = get(hmc_config, :L_noise, 10)
+    eps_noise = get(hmc_config, :eps_noise, .02)
+    n_exit    = get(hmc_config, :n_exit, n_hmc)
     # HMC on numeric parameters.
     n_accept = 0
     n_reject = 0
@@ -35,15 +41,15 @@ function rejuvenate_particle_parameters(
     selection = Gen.select(leaf_addrs...)
     for i=1:n_hmc
         trace, accepted = Gen.hmc(trace, selection;
-            L=10, eps=0.02, check=check, observations=observations)
+            L=L_param, eps=eps_param, check=check, observations=observations)
         if infer_noise
             trace, = Gen.hmc(trace, Gen.select(:noise);
-                L=10, eps=0.02, check=check, observations=observations)
+                L=L_noise, eps=eps_noise, check=check, observations=observations)
         end
         n_trial += 1
         n_accept += Integer(accepted)
         n_reject = accepted ? 0 : n_reject + 1
-        (n_reject == n_hmc_exit) && break
+        (n_reject == n_exit) && break
     end
     verbose && println("accepted HMC[$(n_accept)/$(n_trial)]")
     return trace, n_accept, n_trial
@@ -54,7 +60,7 @@ function rejuvenate_particle_structure(
         n_mcmc::Integer,
         n_hmc::Integer,
         biased::Bool;
-        n_hmc_exit::Integer=n_hmc,
+        hmc_config=Dict(),
         verbose::Bool=false,
         check::Bool=false,
         observations::ChoiceMap=EmptyChoicemap())
@@ -76,7 +82,7 @@ function rejuvenate_particle_structure(
                 verbose=false,
                 check=check,
                 observations=observations,
-                n_hmc_exit=n_hmc_exit)
+                hmc_config=hmc_config)
             stats[:hmc] += n_accept
             stats[:hmc_trials] += trials
         end
@@ -122,7 +128,7 @@ function run_smc_anneal_data(
         n_particles::Int=4,
         n_mcmc::Int=10,
         n_hmc::Int=10,
-        n_hmc_exit::Integer=n_hmc,
+        hmc_config=Dict(),
         permutation::Vector{<:Integer}=collect(1:length(ts)),
         schedule::Vector{<:Integer}=range(1:length(ts)),
         adaptive_resampling::Bool=true,
@@ -207,7 +213,7 @@ function run_smc_anneal_data(
                     local trace = state.traces[i]
                     trace, = rejuvenate_particle_structure(
                         trace, n_mcmc, n_hmc, biased;
-                        n_hmc_exit=n_hmc_exit, verbose=verbose, check=check,
+                        hmc_config=hmc_config, verbose=verbose, check=check,
                         observations=observations)
                     state.traces[i] = trace
                 end

@@ -258,7 +258,7 @@ function run_dataset_anneal_data(config)
         shuffle=config.SHUFFLE,
         adaptive_resampling=config.ADAPTIVE_RESAMPLING,
         adaptive_rejuvenation=config.ADAPTIVE_REJUVENATION,
-        n_hmc_exit=config.N_HMC_EXIT,
+        hmc_config=(n_exit = config.N_HMC_EXIT,),
         verbose=config.VERBOSE,
         check=config.CHECK,
         callback_fn=callback_fn)
