@@ -67,17 +67,25 @@ function fn_callback(; ds_test, y_test, log_dir, kwargs...)
         xs_probe_bounds = Distributions.quantile(dist_probe, [[.1, .9]])
 
         # Compute predictive likelihood of test data.
-        dist_test = Distributions.MvNormal(
-                        cov_fn,
-                        noise,
-                        ts_train_obs,
-                        xs_train_obs,
-                        ts_test)
-        xs_test_mean = Distributions.mean(dist_test)
-        xs_test_smape = smape(
-            AutoGP.Transforms.unapply(model.y_transform, xs_test),
-            AutoGP.Transforms.unapply(model.y_transform, xs_test_mean))
-        xs_test_logpdf =  Distributions.logpdf(dist_test, xs_test)
+        idx_test = findall(!isnan, xs_test)
+        if isempty(idx_test)
+            xs_test_smape = 0.
+            xs_test_logpdf = 0.
+        else
+            ts_test = ts_test[idx_test]
+            xs_test = xs_test[idx_test]
+            dist_test = Distributions.MvNormal(
+                            cov_fn,
+                            noise,
+                            ts_train_obs,
+                            xs_train_obs,
+                            ts_test)
+            xs_test_mean = Distributions.mean(dist_test)
+            xs_test_smape = smape(
+                AutoGP.Transforms.unapply(model.y_transform, xs_test),
+                AutoGP.Transforms.unapply(model.y_transform, xs_test_mean))
+            xs_test_logpdf =  Distributions.logpdf(dist_test, xs_test)
+        end
 
         println("elapsed $(elapsed) smape $(xs_test_smape) logpdf $(xs_test_logpdf)")
 
