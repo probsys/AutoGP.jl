@@ -1,3 +1,16 @@
+Copyright 2023 Google LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 # Insurance Claims
 
 This tutorial uses AutoGP to discover time series models of weekly insurance claims data.
@@ -69,7 +82,7 @@ fig.set_size_inches((20, 10))
 
 
     
-![png](iclaims_files/iclaims_6_0.png)
+![png](iclaims_files/iclaims_7_0.png)
     
 
 
@@ -92,12 +105,12 @@ AutoGP.fit_smc!(model, schedule, 50, 10; shuffle=true, adaptive_resampling=false
     resampled true
     accepted MCMC[4/50] HMC[40/40]
     accepted MCMC[6/50] HMC[48/50]
-    accepted MCMC[7/50] HMC[68/69]
     accepted MCMC[7/50] HMC[61/63]
-    accepted MCMC[8/50] HMC[62/64]
     accepted MCMC[9/50] HMC[73/77]
-    accepted MCMC[14/50] HMC[114/118]
+    accepted MCMC[8/50] HMC[62/64]
+    accepted MCMC[7/50] HMC[68/69]
     accepted MCMC[12/50] HMC[92/97]
+    accepted MCMC[14/50] HMC[114/118]
     Running SMC round 138/343
     weights [1.10e-01, 1.39e-01, 1.98e-01, 1.71e-01, 1.66e-01, 1.78e-01, 1.80e-02, 2.08e-02]
     resampled true
@@ -115,8 +128,8 @@ AutoGP.fit_smc!(model, schedule, 50, 10; shuffle=true, adaptive_resampling=false
     accepted MCMC[8/50] HMC[0/8]
     accepted MCMC[10/50] HMC[0/10]
     accepted MCMC[10/50] HMC[0/10]
-    accepted MCMC[11/50] HMC[0/11]
     accepted MCMC[12/50] HMC[0/12]
+    accepted MCMC[11/50] HMC[0/11]
     accepted MCMC[12/50] HMC[0/12]
     accepted MCMC[13/50] HMC[0/13]
     accepted MCMC[16/50] HMC[2/18]
@@ -124,13 +137,13 @@ AutoGP.fit_smc!(model, schedule, 50, 10; shuffle=true, adaptive_resampling=false
     weights [1.52e-01, 1.63e-04, 1.51e-01, 4.79e-01, 1.04e-01, 9.47e-02, 1.76e-02, 1.36e-03]
     resampled true
     accepted MCMC[7/50] HMC[0/7]
-    accepted MCMC[11/50] HMC[0/11]
     accepted MCMC[12/50] HMC[0/12]
+    accepted MCMC[11/50] HMC[0/11]
     accepted MCMC[12/50] HMC[0/12]
     accepted MCMC[11/50] HMC[1/12]
     accepted MCMC[13/50] HMC[1/14]
-    accepted MCMC[20/50] HMC[0/20]
     accepted MCMC[19/50] HMC[0/19]
+    accepted MCMC[20/50] HMC[0/20]
     Running SMC round 343/343
     weights [4.25e-03, 3.87e-04, 5.39e-03, 5.37e-03, 2.16e-04, 5.35e-01, 4.40e-01, 9.31e-03]
     accepted MCMC[10/50] HMC[0/10]
@@ -176,7 +189,7 @@ fig.set_size_inches((20, 10))
 
 
     
-![png](iclaims_files/iclaims_11_0.png)
+![png](iclaims_files/iclaims_12_0.png)
     
 
 
@@ -291,14 +304,14 @@ ax.legend()
 
 
     
-![png](iclaims_files/iclaims_15_0.png)
+![png](iclaims_files/iclaims_16_0.png)
     
 
 
 
 
 
-    PyObject <matplotlib.legend.Legend object at 0x7ff845a45ea0>
+    PyObject <matplotlib.legend.Legend object at 0x7f3598672c80>
 
 
 
@@ -312,6 +325,6 @@ ax.plot(ds_query, Distributions.mean(log_mvn) - exp.(Distributions.mean(mvn)));
 
 
     
-![png](iclaims_files/iclaims_17_0.png)
+![png](iclaims_files/iclaims_18_0.png)
     
 

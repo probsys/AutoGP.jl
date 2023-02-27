@@ -1,3 +1,16 @@
+Copyright 2023 Google LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 # Inspecting Online Inference
 
 The goal of this tutorial is to demonstrate [callback functions](https://en.wikipedia.org/wiki/Callback_(computer_programming) for inspecting intermediate results in the sequential Monte Carlo loop of [`AutoGP.fit_smc!`](@ref). These callback functions can be used to inspect how the forecasts evolve as more data is incorporated in the model, obtain runtime versus accuracy profiles, and debug poorly performing inference, among many other use cases.
@@ -33,7 +46,7 @@ ax.plot(ds, y, marker=".", markerfacecolor="none", markeredgecolor="k", color="b
 
 
     
-![png](callbacks_files/callbacks_4_0.png)
+![png](callbacks_files/callbacks_5_0.png)
     
 
 
@@ -116,7 +129,7 @@ AutoGP.fit_smc!(model, schedule, 10, 10; shuffle=false, callback_fn=callback_fn)
 
 
     
-![png](callbacks_files/callbacks_10_0.png)
+![png](callbacks_files/callbacks_11_0.png)
     
 
 
@@ -129,62 +142,88 @@ end
 
 
     ×
-    ├── LIN(0.21; 0.09, 0.56)
-    └── PER(1.86, 0.10; 0.17)
-
-
-
-
-    ×
-    ├── LIN(0.21; 0.09, 0.56)
+    ├── ＋
+    │   ├── GE(2.09, 1.32; 0.25)
+    │   └── PER(0.57, 0.20; 0.23)
     └── ×
-        ├── PER(1.86, 0.10; 0.17)
-        └── LIN(0.47; 0.96, 1.21)
+        ├── LIN(0.16; 0.11, 0.04)
+        └── LIN(0.10; 0.28, 1.18)
 
 
 
 
     ×
-    ├── LIN(0.21; 0.09, 0.56)
-    └── PER(1.86, 0.10; 0.17)
-
-
-
-
-    ×
-    ├── LIN(0.21; 0.09, 0.56)
-    └── PER(1.86, 0.10; 0.17)
-
-
-
-
-    ×
-    ├── LIN(0.21; 0.09, 0.56)
-    └── PER(1.86, 0.10; 0.17)
-
-
-
-
-    ×
-    ├── LIN(0.21; 0.09, 0.56)
+    ├── ＋
+    │   ├── GE(2.09, 1.32; 0.25)
+    │   └── PER(0.57, 0.20; 0.23)
     └── ×
-        ├── PER(1.86, 0.10; 0.17)
-        └── LIN(0.47; 0.96, 1.21)
+        ├── LIN(0.16; 0.11, 0.04)
+        └── LIN(0.10; 0.28, 1.18)
 
 
 
 
     ×
-    ├── LIN(0.21; 0.09, 0.56)
+    ├── ＋
+    │   ├── GE(2.09, 1.32; 0.25)
+    │   └── PER(0.57, 0.20; 0.23)
     └── ×
-        ├── PER(1.86, 0.10; 0.17)
-        └── LIN(0.47; 0.96, 1.21)
+        ├── LIN(0.16; 0.11, 0.04)
+        └── LIN(0.10; 0.28, 1.18)
 
 
 
 
     ×
-    ├── LIN(0.21; 0.09, 0.56)
-    └── PER(1.86, 0.10; 0.17)
+    ├── ＋
+    │   ├── GE(2.09, 1.32; 0.25)
+    │   └── PER(0.57, 0.20; 0.23)
+    └── ×
+        ├── LIN(0.16; 0.11, 0.04)
+        └── LIN(0.10; 0.28, 1.18)
+
+
+
+
+    ×
+    ├── ＋
+    │   ├── GE(2.09, 1.32; 0.25)
+    │   └── PER(0.57, 0.20; 0.23)
+    └── ×
+        ├── LIN(0.12; 0.19, 0.40)
+        └── LIN(0.10; 0.28, 1.18)
+
+
+
+
+    ×
+    ├── ＋
+    │   ├── GE(5.19, 1.38; 0.62)
+    │   └── PER(0.57, 0.20; 0.23)
+    └── ×
+        ├── LIN(0.12; 0.19, 0.40)
+        └── LIN(0.06; 0.16, 0.44)
+
+
+
+
+    ×
+    ├── ＋
+    │   ├── GE(2.09, 1.32; 0.25)
+    │   └── PER(0.57, 0.20; 0.23)
+    └── ×
+        ├── LIN(0.12; 0.19, 0.40)
+        └── LIN(0.06; 0.16, 0.44)
+
+
+
+
+    ×
+    ├── ＋
+    │   ├── GE(2.09, 1.32; 0.25)
+    │   └── PER(0.57, 0.20; 0.23)
+    └── ×
+        ├── LIN(0.12; 0.19, 0.40)
+        └── LIN(0.10; 0.28, 1.18)
 
 

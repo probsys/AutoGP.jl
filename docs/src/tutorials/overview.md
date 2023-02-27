@@ -1,3 +1,16 @@
+Copyright 2023 Google LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 # Overview
 
 This tutorial demonstrates the basic capabilities of the [`AutoGP`](@ref) package.
@@ -77,7 +90,7 @@ ax.legend();
 
 
     
-![png](overview_files/overview_8_0.png)
+![png](overview_files/overview_9_0.png)
     
 
 
@@ -118,57 +131,55 @@ for (i, (k, w)) in enumerate(zip(kernels, weights))
 end
 ```
 
-    Model 1, Weight 4.70982905181952e-101
+    Model 1, Weight 0.26142074394894477
 
 
 
-    GE(0.13, 1.29; 0.30)
+    CP(0.19055667126219877, 0.001)
+    ├── LIN(1.26; 3.19, 0.06)
+    └── PER(0.11, 0.52; 0.13)
 
 
 
-    Model 2, Weight 1.0
+    Model 2, Weight 4.0257929388061755e-27
 
 
 
-    LIN(0.05; 0.15, 0.35)
+    LIN(0.09; 0.52, 0.20)
 
 
 
-    Model 3, Weight 9.460376365753039e-80
+    Model 3, Weight 1.7975106803349286e-9
 
 
 
-    LIN(0.05; 0.15, 0.10)
+    PER(1.37, 0.30; 1.04)
 
 
 
-    Model 4, Weight 1.82215910727222e-72
+    Model 4, Weight 1.1645819463329054e-21
 
 
 
-    PER(0.37, 3.00; 0.10)
+    GE(0.42, 1.00; 0.04)
 
 
 
-    Model 5, Weight 4.922639377527838e-72
+    Model 5, Weight 7.24814391228416e-39
 
 
 
-    ＋
-    ├── ＋
-    │   ├── LIN(0.52; 0.33, 0.07)
-    │   └── ×
-    │       ├── PER(0.42, 0.21; 0.45)
-    │       └── GE(0.06, 0.49; 0.25)
-    └── GE(0.45, 1.12; 0.05)
+    ×
+    ├── GE(0.09, 0.54; 1.82)
+    └── PER(0.18, 0.14; 0.42)
 
 
 
-    Model 6, Weight 4.5439045764943e-78
+    Model 6, Weight 0.7385792542535452
 
 
 
-    PER(0.09, 0.03; 0.31)
+    GE(0.13, 0.29; 0.11)
 
 
 
@@ -182,33 +193,33 @@ forecasts = AutoGP.predict(model, ds_query; quantiles=[0.025, 0.975])
 show(forecasts)
 ```
 
-    [1m      [0m│ ds          particle  weight        y_0.025   y_0.975   y_mean
-    ──────┼─────────────────────────────────────────────────────────────────
-        1 │ 1949-01-01         1  4.70983e-101  -769.452  1106.62   168.585
-        2 │ 1949-02-01         1  4.70983e-101  -769.429  1098.54   164.554
-        3 │ 1949-03-01         1  4.70983e-101  -769.627  1092.7    161.537
-        4 │ 1949-04-01         1  4.70983e-101  -770.115  1087.54   158.711
-        5 │ 1949-05-01         1  4.70983e-101  -770.71   1083.62   156.456
-        6 │ 1949-06-01         1  4.70983e-101  -771.29   1080.57   154.639
-        7 │ 1949-07-01         1  4.70983e-101  -771.905  1078.26   153.175
-        8 │ 1949-08-01         1  4.70983e-101  -772.698  1076.23   151.769
-        9 │ 1949-09-01         1  4.70983e-101  -773.59   1074.48   150.444
-       10 │ 1949-10-01         1  4.70983e-101  -774.364  1073.13   149.381
-       11 │ 1949-11-01         1  4.70983e-101  -774.809  1072.27   148.732
-       12 │ 1949-12-01         1  4.70983e-101  -774.701  1072.11   148.705
-      ⋮   │     ⋮          ⋮           ⋮           ⋮         ⋮         ⋮
-     1070 │ 1963-02-01         6  4.5439e-78    -305.157   789.403  242.123
-     1071 │ 1963-03-01         6  4.5439e-78    -378.94    887.029  254.044
-     1072 │ 1963-04-01         6  4.5439e-78    -355.969   828.004  236.018
-     1073 │ 1963-05-01         6  4.5439e-78    -376.969   856.96   239.996
-     1074 │ 1963-06-01         6  4.5439e-78    -329.707   818.755  244.524
-     1075 │ 1963-07-01         6  4.5439e-78    -339.422   871.636  266.107
-     1076 │ 1963-08-01         6  4.5439e-78    -287.209   852.695  282.743
-     1077 │ 1963-09-01         6  4.5439e-78    -262.468   835.754  286.643
-     1078 │ 1963-10-01         6  4.5439e-78    -224.792   890.569  332.889
-     1079 │ 1963-11-01         6  4.5439e-78    -246.4     844.614  299.107
-     1080 │ 1963-12-01         6  4.5439e-78    -229.751   885.286  327.767
-    [36m                                                       1057 rows omitted[0m
+    [1m      [0m│ ds          particle  weight    y_0.025   y_0.975  y_mean
+    ──────┼────────────────────────────────────────────────────────────
+        1 │ 1949-01-01         1  0.261421  -83.3461  347.688  132.171
+        2 │ 1949-02-01         1  0.261421  -83.1647  347.645  132.24
+        3 │ 1949-03-01         1  0.261421  -83.0097  347.615  132.303
+        4 │ 1949-04-01         1  0.261421  -82.8478  347.592  132.372
+        5 │ 1949-05-01         1  0.261421  -82.7009  347.579  132.439
+        6 │ 1949-06-01         1  0.261421  -82.5592  347.576  132.508
+        7 │ 1949-07-01         1  0.261421  -82.4319  347.583  132.575
+        8 │ 1949-08-01         1  0.261421  -82.3105  347.6    132.645
+        9 │ 1949-09-01         1  0.261421  -82.1993  347.627  132.714
+       10 │ 1949-10-01         1  0.261421  -82.1016  347.664  132.781
+       11 │ 1949-11-01         1  0.261421  -82.0108  347.711  132.85
+       12 │ 1949-12-01         1  0.261421  -81.9328  347.767  132.917
+      ⋮   │     ⋮          ⋮         ⋮         ⋮         ⋮        ⋮
+     1070 │ 1963-02-01         6  0.738579  -71.2452  656.635  292.695
+     1071 │ 1963-03-01         6  0.738579  -71.8672  656.291  292.212
+     1072 │ 1963-04-01         6  0.738579  -72.5386  655.92   291.691
+     1073 │ 1963-05-01         6  0.738579  -73.1719  655.57   291.199
+     1074 │ 1963-06-01         6  0.738579  -73.8099  655.217  290.703
+     1075 │ 1963-07-01         6  0.738579  -74.4122  654.883  290.235
+     1076 │ 1963-08-01         6  0.738579  -75.0194  654.546  289.763
+     1077 │ 1963-09-01         6  0.738579  -75.6119  654.218  289.303
+     1078 │ 1963-10-01         6  0.738579  -76.1718  653.907  288.868
+     1079 │ 1963-11-01         6  0.738579  -76.7368  653.594  288.428
+     1080 │ 1963-12-01         6  0.738579  -77.2711  653.297  288.013
+    [36m                                                  1057 rows omitted[0m
 
 Let us visualize the forecasts before model fitting. The model clearly underfits the data.
 
@@ -230,7 +241,7 @@ end
 
 
     
-![png](overview_files/overview_20_0.png)
+![png](overview_files/overview_21_0.png)
     
 
 
@@ -250,18 +261,18 @@ AutoGP.fit_smc!(model, AutoGP.Schedule.linear_schedule(n_train, .10), 75, 10; ve
     weights [2.14e-01, 5.85e-02, 2.05e-01, 5.23e-01, 1.09e-04, 1.51e-04]
     resampled true
     accepted MCMC[12/75] HMC[71/78]
-    accepted MCMC[22/75] HMC[121/136]
     accepted MCMC[9/75] HMC[64/69]
-    accepted MCMC[27/75] HMC[191/202]
     accepted MCMC[19/75] HMC[122/132]
+    accepted MCMC[22/75] HMC[121/136]
     accepted MCMC[22/75] HMC[89/107]
+    accepted MCMC[27/75] HMC[191/202]
     Running SMC round 26/126
     weights [8.08e-03, 4.24e-01, 1.10e-03, 1.92e-02, 3.97e-01, 1.50e-01]
     resampled true
+    accepted MCMC[7/75] HMC[55/58]
+    accepted MCMC[6/75] HMC[37/40]
     accepted MCMC[6/75] HMC[43/47]
     accepted MCMC[12/75] HMC[52/60]
-    accepted MCMC[6/75] HMC[37/40]
-    accepted MCMC[7/75] HMC[55/58]
     accepted MCMC[18/75] HMC[84/97]
     accepted MCMC[21/75] HMC[112/125]
     Running SMC round 39/126
@@ -269,15 +280,15 @@ AutoGP.fit_smc!(model, AutoGP.Schedule.linear_schedule(n_train, .10), 75, 10; ve
     resampled true
     accepted MCMC[0/75] HMC[0/0]
     accepted MCMC[1/75] HMC[6/7]
-    accepted MCMC[13/75] HMC[50/61]
     accepted MCMC[5/75] HMC[43/44]
+    accepted MCMC[13/75] HMC[50/61]
     accepted MCMC[10/75] HMC[64/71]
     accepted MCMC[17/75] HMC[95/105]
     Running SMC round 52/126
     weights [1.66e-03, 8.13e-02, 8.69e-02, 1.65e-01, 4.54e-02, 6.20e-01]
     resampled true
-    accepted MCMC[4/75] HMC[24/27]
     accepted MCMC[3/75] HMC[24/25]
+    accepted MCMC[4/75] HMC[24/27]
     accepted MCMC[11/75] HMC[25/36]
     accepted MCMC[17/75] HMC[111/122]
     accepted MCMC[23/75] HMC[62/84]
@@ -296,44 +307,44 @@ AutoGP.fit_smc!(model, AutoGP.Schedule.linear_schedule(n_train, .10), 75, 10; ve
     resampled true
     accepted MCMC[14/75] HMC[0/14]
     accepted MCMC[14/75] HMC[0/14]
-    accepted MCMC[26/75] HMC[2/28]
     accepted MCMC[17/75] HMC[0/17]
     accepted MCMC[15/75] HMC[2/17]
+    accepted MCMC[26/75] HMC[2/28]
     accepted MCMC[18/75] HMC[0/18]
     Running SMC round 91/126
     weights [5.03e-02, 1.90e-04, 3.17e-01, 9.72e-02, 1.74e-01, 3.61e-01]
     resampled false
-    accepted MCMC[12/75] HMC[0/12]
-    accepted MCMC[16/75] HMC[0/16]
     accepted MCMC[16/75] HMC[0/16]
     accepted MCMC[15/75] HMC[0/15]
+    accepted MCMC[12/75] HMC[0/12]
+    accepted MCMC[16/75] HMC[0/16]
     accepted MCMC[18/75] HMC[0/18]
     accepted MCMC[28/75] HMC[1/29]
     Running SMC round 104/126
     weights [1.14e-02, 6.30e-08, 7.42e-02, 6.76e-01, 1.48e-01, 9.09e-02]
     resampled true
-    accepted MCMC[12/75] HMC[0/12]
     accepted MCMC[15/75] HMC[0/15]
-    accepted MCMC[16/75] HMC[0/16]
     accepted MCMC[14/75] HMC[0/14]
+    accepted MCMC[12/75] HMC[0/12]
+    accepted MCMC[16/75] HMC[0/16]
     accepted MCMC[15/75] HMC[1/16]
     accepted MCMC[30/75] HMC[0/30]
     Running SMC round 117/126
     weights [3.84e-01, 4.30e-02, 2.19e-01, 1.02e-01, 1.59e-01, 9.31e-02]
     resampled false
     accepted MCMC[9/75] HMC[0/9]
+    accepted MCMC[15/75] HMC[0/15]
     accepted MCMC[20/75] HMC[1/21]
+    accepted MCMC[15/75] HMC[0/15]
     accepted MCMC[17/75] HMC[0/17]
-    accepted MCMC[15/75] HMC[0/15]
-    accepted MCMC[15/75] HMC[0/15]
     accepted MCMC[20/75] HMC[0/20]
     Running SMC round 126/126
     weights [5.19e-01, 3.88e-02, 5.85e-02, 1.22e-01, 9.97e-02, 1.62e-01]
     accepted MCMC[10/75] HMC[0/10]
-    accepted MCMC[17/75] HMC[0/17]
-    accepted MCMC[13/75] HMC[1/14]
     accepted MCMC[15/75] HMC[0/15]
+    accepted MCMC[13/75] HMC[1/14]
     accepted MCMC[20/75] HMC[0/20]
+    accepted MCMC[17/75] HMC[0/17]
     accepted MCMC[24/75] HMC[0/24]
 
 
@@ -396,7 +407,7 @@ end
 
 
     
-![png](overview_files/overview_28_0.png)
+![png](overview_files/overview_29_0.png)
     
 
 
@@ -648,7 +659,7 @@ end
 
 
     
-![png](overview_files/overview_42_0.png)
+![png](overview_files/overview_43_0.png)
     
 
 
@@ -730,10 +741,10 @@ AutoGP.mcmc_structure!(model, 100, 10; verbose=true)
 ```
 
     accepted MCMC[19/100] HMC[0/38]
-    accepted MCMC[23/100] HMC[0/46]
-    accepted MCMC[26/100] HMC[0/52]
     accepted MCMC[27/100] HMC[0/54]
+    accepted MCMC[23/100] HMC[0/46]
     accepted MCMC[25/100] HMC[0/50]
+    accepted MCMC[26/100] HMC[0/52]
     accepted MCMC[25/100] HMC[0/50]
 
 
@@ -756,6 +767,6 @@ end
 
 
     
-![png](overview_files/overview_54_0.png)
+![png](overview_files/overview_55_0.png)
     
 
