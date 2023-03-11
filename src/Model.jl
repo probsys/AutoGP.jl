@@ -32,14 +32,20 @@ function untransform_logit_normal(param::Real, scale::Real, mu::Real, sigma::Rea
     return (log(param / (scale - param)) - mu) / sigma
 end
 
-transform_param(field::Symbol, z::Real) = @match field begin
+function transform_param(field::Symbol, z::Real; config::GPConfig=GPConfig())
+    return @match field begin
     :gamma  => transform_logit_normal(z, 2, 0, 1)
+    :period => config.min_period + transform_log_normal(z, -1.5, 1.)
     _       => transform_log_normal(z, -1.5, 1.)
+    end
 end
 
-untransform_param(field::Symbol, param::Real) = @match field begin
-    :gamma  => untransform_logit_normal(param, 2, 0, 1)
-    _       => untransform_log_normal(param, -1.5, 1.)
+function untransform_param(field::Symbol, param::Real; config::GPConfig=GPConfig())
+    return @match field begin
+        :gamma  => untransform_logit_normal(param, 2, 0, 1)
+        :period => untransform_log_normal(param - config.min_period, -1.5, 1.)
+        _       => untransform_log_normal(param, -1.5, 1.)
+    end
 end
 
 """Return distribution over node types at a given index."""
@@ -71,7 +77,7 @@ end
         params = []
         for field in fieldnames(NodeType)
             log_param  = {(idx, field)} ~ normal(0, 1)
-            param = transform_param(field, log_param)
+            param = transform_param(field, log_param; config=config)
             push!(params, param)
         end
         node = NodeType(params...)
@@ -93,7 +99,7 @@ end
         # but we should allow such traces to have probability zero
         # (for inference) rather than force an assertion error.
         location = {(idx, :location)} ~ normal(0, 1)
-        param = transform_param(:location, location)
+        param = transform_param(:location, location; config=config)
         child1 = Gen.get_child(idx, 1, config.max_branch)
         child2 = Gen.get_child(idx, 2, config.max_branch)
         left_node = {*} ~ covariance_prior(child1, config)

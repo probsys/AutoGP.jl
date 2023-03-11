@@ -603,6 +603,8 @@ an instance of [`Node`](@ref). The main `kwargs` (all optional) are:
     changepoints::Bool = true
     # Observation noise level.
     noise::Union{Nothing,Float64} = nothing
+    # Minimum period in any Periodic kernel.
+    min_period::Real = 0.
 end
 
 # Convert index of a node to its depth in tree.

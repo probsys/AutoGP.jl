@@ -93,6 +93,10 @@ function GPModel(
     # Transform the data.
     ds_numeric = Transforms.apply(ds_transform, to_numeric(ds))
     y_numeric = Transforms.apply(y_transform, y)
+    # Determine minimum period.
+    min_period = minimum(ds_numeric[2:end] .- ds_numeric[1:end-1])
+    config = GP.GPConfig(config; min_period=min_period)
+    println("The minimum period is $(min_period)")
     # Initialize the particle filter.
     observations = Gen.choicemap((:xs, y_numeric))
     if !isnothing(config.noise)
