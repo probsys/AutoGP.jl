@@ -111,6 +111,12 @@ Return vector of normalized particle weights.
 particle_weights(model::GPModel) = Inference.compute_particle_weights(model.pf_state)
 
 """
+    effective_sample_size(model::GPModel)
+Return effective sample size (ESS) of weighted particle collection.
+"""
+effective_sample_size(model::GPModel) = Inference.effective_sample_size(model.pf_state)
+
+"""
     log_marginal_likelihood_estimate(model::GPModel)
 Return estimate of marginal likelihood of data (in log space).
 """

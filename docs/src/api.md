@@ -131,5 +131,6 @@ AutoGP.predict_proba
 AutoGP.predict_mvn
 AutoGP.log_marginal_likelihood_estimate
 AutoGP.particle_weights
+AutoGP.effective_sample_size
 AutoGP.covariance_kernels
 ```

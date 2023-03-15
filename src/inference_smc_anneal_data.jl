@@ -24,6 +24,12 @@ function compute_particle_weights(state::Gen.ParticleFilterState)
     return exp.(log_normalized_weights)
 end
 
+# Return normalized particle weights
+function effective_sample_size(state::Gen.ParticleFilterState)
+    log_normalized_weights = Gen.normalize_weights(state.log_weights)[2]
+    return Gen.effective_sample_size(log_normalized_weights)
+end
+
 function rejuvenate_particle_parameters(
         trace::Gen.Trace,
         n_hmc::Integer;
