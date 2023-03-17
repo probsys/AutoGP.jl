@@ -163,6 +163,7 @@ end
         biased::Bool=false,
         adaptive_resampling::Bool=true,
         adaptive_rejuvenation::Bool=false,
+        hmc_config::Dict=Dict(),
         verbose::Bool=false,
         check::Bool=false,
         callback_fn::Function=(; kwargs...) -> nothing)
