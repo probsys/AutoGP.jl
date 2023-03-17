@@ -213,8 +213,10 @@ function run_smc_anneal_data(
             # Report weights.
             verbose && begin
                 w = compute_particle_weights(state)
+                ess = effective_sample_size(state)
                 wstr = replace(repr(map((x->(@sprintf "%1.2e" x)), w)),"\""=>"")
-                println("weights $(wstr)")
+                println("Particle Weights: $(wstr)")
+                println("Particle ESS: $(ess/length(state.traces))")
             end
 
             # Resample step.
