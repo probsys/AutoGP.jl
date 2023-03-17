@@ -219,6 +219,7 @@ function fit_smc!(
         biased=biased,
         n_particles=num_particles(model),
         n_mcmc=n_mcmc,
+        n_hmc=n_hmc,
         hmc_config=hmc_config,
         permutation=permutation,
         schedule=schedule,
