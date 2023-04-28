@@ -1,14 +1,10 @@
 # AutoGP
 
-_Warning: This is rapidly evolving research software._
-
 This package contains the reference implementation of AutoGP, a method
 for automatically learning the structure of time series data using
 Gaussian process models.
 
 ## Installing
-
-This software is tested on Debian 5.19.11-1rodete1 (2022-10-31) x86_64 GNU/Linux.
 
 1. Obtain [Julia 1.8](https://julialang.org/downloads/) or later.
 2. Clone this repository.
