@@ -133,4 +133,5 @@ AutoGP.log_marginal_likelihood_estimate
 AutoGP.particle_weights
 AutoGP.effective_sample_size
 AutoGP.covariance_kernels
+AutoGP.observation_noise_variances
 ```
