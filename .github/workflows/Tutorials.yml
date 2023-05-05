@@ -27,11 +27,15 @@ jobs:
           arch: ${{ matrix.julia-arch }}
           show-versioninfo: true
       - uses: julia-actions/julia-buildpkg@v1
+
+      - name: Instantiate project
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+
       - name: Test notebooks
+        working-directory: ./docs/src/tutorials
         env:
           JULIA_NUM_THREADS: 8
-        working-directory: ./docs/src/tutorials
         run: |
           python3 -m pip install jupytext
           ls *.ipynb | xargs python3 -m jupytext --to=jl
-          ls *.jl | xargs julia
+          ls *.jl | xargs julia --project=../../..
