@@ -1,0 +1,7 @@
+[deps]
+AutoGP = "6eb593e7-dfb4-4e48-b98e-d7222cdf0053"
+DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+
+[compat]
+Documenter = "0.28"

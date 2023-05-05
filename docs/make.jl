@@ -39,3 +39,5 @@ makedocs(
         "Utilities" => "utils.md",
     ],
 )
+
+deploydocs(repo="github.com/fsaad/AutoGP.jl.git")
