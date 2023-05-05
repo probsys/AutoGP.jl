@@ -1,4 +1,6 @@
-All tutorials should be written in .ipynb files.
-Each .ipynb is converted to md using nbconvert.
+All tutorials should be written or edited as .ipynb files.
 
-  $ python -m jupyter nbconvert --to markdown [filename]
+The script in ./build.sh will convert these to .jl and .md files.
+
+If .md files should contain output, make that the .ipynb notebooks have
+been executed, either through the browser or command-line `jupyter`.
