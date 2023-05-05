@@ -24,6 +24,10 @@ REPL (version 1.8+), type `]` to enter the Pkg REPL mode and run
 pkg> add AutoGP
 ```
 
+## Tutorials
+
+Please see https://fsaad.github.io/AutoGP.jl
+
 ## Developer Notes
 
 #### Building Documentation Locally
