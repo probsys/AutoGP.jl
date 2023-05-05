@@ -30,14 +30,14 @@ Please see https://fsaad.github.io/AutoGP.jl
 
 ## Developer Notes
 
-#### Building Documentation Locally
+#### Building Documentation
 
 ```
 $ julia --project=. docs/make.jl
 $ python3 -m http.server --directory docs/build/ --bind localhost 9090
 ```
 
-#### Running Tutorials
+#### Building From Clone
 
 1. Obtain [Julia 1.8](https://julialang.org/downloads/) or later.
 2. Clone this repository.
