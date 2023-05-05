@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Insurance Claims · AutoGP</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../index.html"><img src="../assets/logo.svg" alt="AutoGP logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../index.html">AutoGP</a></span></div><form class="docs-search" action="../search.html"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../index.html">Home</a></li><li><a class="tocitem" href="../getting_started.html">Getting Started</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="overview.html">Overview</a></li><li class="is-active"><a class="tocitem" href="iclaims.html">Insurance Claims</a></li><li><a class="tocitem" href="callbacks.html">Inspecting Online Inference</a></li><li><a class="tocitem" href="greedy_mcmc.html">Greedy Search and MCMC</a></li></ul></li><li><a class="tocitem" href="../api.html">AutoGP API</a></li><li><a class="tocitem" href="../gp.html">Gaussian Process Library</a></li><li><a class="tocitem" href="../utils.html">Utilities</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href="iclaims.html">Insurance Claims</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="iclaims.html">Insurance Claims</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/fsaad/AutoGP.jl/blob/main/docs/src/tutorials/iclaims.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Insurance-Claims"><a class="docs-heading-anchor" href="#Insurance-Claims">Insurance Claims</a><a id="Insurance-Claims-1"></a><a class="docs-heading-anchor-permalink" href="#Insurance-Claims" title="Permalink"></a></h1><p>This tutorial uses AutoGP to discover time series models of weekly insurance claims data.</p><pre><code class="language-julia hljs">import AutoGP
+import CSV
+import Dates
+import DataFrames
+
+using PyPlot: plt</code></pre><p>We first load the <a href="assets/iclaims.csv"><code>iclaims.csv</code></a> dataset from disk.  Since the data is positive we apply a log transform and perform all modeling in this transformed space.</p><pre><code class="language-julia hljs">data = CSV.File(&quot;assets/iclaims.csv&quot;; header=[:ds, :y], types=Dict(:ds=&gt;Dates.Date, :y=&gt;Float64));
+df = DataFrames.DataFrame(data)
+df[:,&quot;y&quot;] = log.(df[:,&quot;y&quot;])
+show(df)</code></pre><pre><code class="nohighlight hljs">[1m     [0m│ ds          y
+─────┼─────────────────────
+   1 │ 2010-01-03  13.3866
+   2 │ 2010-01-10  13.6242
+   3 │ 2010-01-17  13.3987
+   4 │ 2010-01-24  13.1375
+   5 │ 2010-01-31  13.1968
+   6 │ 2010-02-07  13.147
+   7 │ 2010-02-14  13.0859
+   8 │ 2010-02-21  13.035
+   9 │ 2010-02-28  13.0704
+  10 │ 2010-03-07  13.0448
+  11 │ 2010-03-14  12.9924
+  12 │ 2010-03-21  12.9314
+  ⋮  │     ⋮          ⋮
+ 433 │ 2018-04-15  12.3287
+ 434 │ 2018-04-22  12.2068
+ 435 │ 2018-04-29  12.1359
+ 436 │ 2018-05-06  12.1562
+ 437 │ 2018-05-13  12.1819
+ 438 │ 2018-05-20  12.2407
+ 439 │ 2018-05-27  12.2202
+ 440 │ 2018-06-03  12.1628
+ 441 │ 2018-06-10  12.289
+ 442 │ 2018-06-17  12.2357
+ 443 │ 2018-06-24  12.3139
+[36m           420 rows omitted[0m</code></pre><p>Let&#39;s hold out the final 100 weeks of observations to serve as test data.</p><pre><code class="language-julia hljs">n_test = 100
+n_train = DataFrames.nrow(df) - n_test
+df_train = df[1:end-n_test, :]
+df_test = df[end-n_test+1:end, :]
+
+fig, ax = plt.subplots()
+ax.scatter(df_train.ds, df_train.y, marker=&quot;.&quot;, color=&quot;k&quot;, label=&quot;Observed Data&quot;)
+ax.scatter(df_test.ds, df_test.y, marker=&quot;.&quot;, color=&quot;r&quot;, label=&quot;Test Data&quot;)
+ax.legend()
+
+fig.set_size_inches((20, 10))</code></pre><p><img src="iclaims_files/iclaims_6_0.png" alt="png"/></p><p>The next step is to initialize an <a href="../api.html#AutoGP.GPModel"><code>AutoGP.GPModel</code></a> instance and fit the model using sequential Monte Carlo structure learning.</p><pre><code class="language-julia hljs">model = AutoGP.GPModel(df_train.ds, df_train.y; n_particles=8);</code></pre><pre><code class="language-julia hljs">AutoGP.seed!(10)
+schedule = AutoGP.Schedule.linear_schedule(n_train, .20)
+AutoGP.fit_smc!(model; schedule=schedule, n_mcmc=50, n_hmc=10, shuffle=true, adaptive_resampling=false, verbose=true);</code></pre><pre><code class="nohighlight hljs">Running SMC round 69/343
+weights [3.38e-32, 4.11e-20, 7.26e-29, 1.02e-44, 4.74e-57, 9.10e-04, 9.99e-01, 2.71e-17]
+resampled true
+accepted MCMC[4/50] HMC[40/40]
+accepted MCMC[6/50] HMC[48/50]
+accepted MCMC[7/50] HMC[61/63]
+accepted MCMC[9/50] HMC[73/77]
+accepted MCMC[8/50] HMC[62/64]
+accepted MCMC[7/50] HMC[68/69]
+accepted MCMC[12/50] HMC[92/97]
+accepted MCMC[14/50] HMC[114/118]
+Running SMC round 138/343
+weights [1.10e-01, 1.39e-01, 1.98e-01, 1.71e-01, 1.66e-01, 1.78e-01, 1.80e-02, 2.08e-02]
+resampled true
+accepted MCMC[2/50] HMC[3/5]
+accepted MCMC[3/50] HMC[15/17]
+accepted MCMC[13/50] HMC[0/13]
+accepted MCMC[15/50] HMC[0/15]
+accepted MCMC[8/50] HMC[17/24]
+accepted MCMC[8/50] HMC[12/20]
+accepted MCMC[12/50] HMC[20/32]
+accepted MCMC[16/50] HMC[62/73]
+Running SMC round 207/343
+weights [1.21e-18, 1.72e-18, 1.00e+00, 3.00e-20, 1.48e-12, 2.59e-17, 8.86e-18, 1.49e-17]
+resampled true
+accepted MCMC[8/50] HMC[0/8]
+accepted MCMC[10/50] HMC[0/10]
+accepted MCMC[10/50] HMC[0/10]
+accepted MCMC[12/50] HMC[0/12]
+accepted MCMC[11/50] HMC[0/11]
+accepted MCMC[12/50] HMC[0/12]
+accepted MCMC[13/50] HMC[0/13]
+accepted MCMC[16/50] HMC[2/18]
+Running SMC round 276/343
+weights [1.52e-01, 1.63e-04, 1.51e-01, 4.79e-01, 1.04e-01, 9.47e-02, 1.76e-02, 1.36e-03]
+resampled true
+accepted MCMC[7/50] HMC[0/7]
+accepted MCMC[12/50] HMC[0/12]
+accepted MCMC[11/50] HMC[0/11]
+accepted MCMC[12/50] HMC[0/12]
+accepted MCMC[11/50] HMC[1/12]
+accepted MCMC[13/50] HMC[1/14]
+accepted MCMC[19/50] HMC[0/19]
+accepted MCMC[20/50] HMC[0/20]
+Running SMC round 343/343
+weights [4.25e-03, 3.87e-04, 5.39e-03, 5.37e-03, 2.16e-04, 5.35e-01, 4.40e-01, 9.31e-03]
+accepted MCMC[10/50] HMC[0/10]
+accepted MCMC[10/50] HMC[0/10]
+accepted MCMC[12/50] HMC[0/12]
+accepted MCMC[13/50] HMC[1/14]
+accepted MCMC[14/50] HMC[0/14]
+accepted MCMC[16/50] HMC[0/16]
+accepted MCMC[17/50] HMC[0/17]
+accepted MCMC[14/50] HMC[1/15]</code></pre><p>Plotting the forecasts from each particle reflects the structural uncertainty.  7/8 particles have inferred a periodic component (<a href="../gp.html#AutoGP.GP.Periodic"><code>AutoGP.GP.Periodic</code></a>) with additive linear trend <a href="../gp.html#AutoGP.GP.Linear"><code>AutoGP.GP.Linear</code></a>. 1/8 of the particles has inferred a sum of a periodic kernel and gamma exponential (<a href="../gp.html#AutoGP.GP.GammaExponential"><code>AutoGP.GP.GammaExponential</code></a>) kernel, which is stationary but not &quot;smooth&quot; (formally, not mean-square differentiable).</p><pre><code class="language-julia hljs"># Generate in-sample and future predictions.
+ds_future = range(start=df_test.ds[end]+Dates.Week(1), step=Dates.Week(1), length=54*10)
+ds_query = vcat(df_train.ds, df_test.ds, ds_future)
+forecasts = AutoGP.predict(model, ds_query; quantiles=[0.025, 0.975]);
+weights = AutoGP.particle_weights(model)
+
+# Plot the data.
+fig, ax = plt.subplots()
+ax.scatter(df_train.ds, df_train.y, marker=&quot;.&quot;, color=&quot;k&quot;, label=&quot;Observed Data&quot;)
+ax.scatter(df_test.ds, df_test.y, marker=&quot;.&quot;, color=&quot;r&quot;, label=&quot;Test Data&quot;)
+
+# Plot the forecasts from each particle.
+for i=1:AutoGP.num_particles(model)
+    subdf = forecasts[forecasts.particle.==i,:]
+    ax.plot(subdf[!,&quot;ds&quot;], subdf[!,&quot;y_mean&quot;], color=&quot;k&quot;, linewidth=.1)
+    ax.fill_between(
+        subdf.ds, subdf[!,&quot;y_0.025&quot;], subdf[!,&quot;y_0.975&quot;];
+        color=&quot;tab:blue&quot;, alpha=0.025)
+end
+
+# Plot the grand mean.
+mvn = AutoGP.predict_mvn(model, ds_query)
+ax.plot(ds_query, AutoGP.Distributions.mean(mvn), color=&quot;k&quot;);
+
+fig.set_size_inches((20, 10))</code></pre><p><img src="iclaims_files/iclaims_11_0.png" alt="png"/></p><pre><code class="language-julia hljs">for (w, k) in zip(AutoGP.particle_weights(model), AutoGP.covariance_kernels(model))
+    println(&quot;Particle weight $(w)&quot;)
+    display(k)
+end</code></pre><pre><code class="nohighlight hljs">Particle weight 0.004250523793423254
+
+
+
+＋
+├── LIN(0.43; 0.06, 0.40)
+└── PER(0.27, 0.15; 0.12)
+
+
+
+Particle weight 0.0003867955857232888
+
+
+
+＋
+├── LIN(0.21; 0.48, 0.28)
+└── PER(0.31, 0.15; 0.14)
+
+
+
+Particle weight 0.0053919770385446346
+
+
+
+＋
+├── PER(0.27, 0.15; 0.12)
+└── LIN(0.10; 0.11, 1.58)
+
+
+
+Particle weight 0.005373167226504197
+
+
+
+＋
+├── LIN(0.55; 0.04, 0.06)
+└── PER(0.27, 0.15; 0.12)
+
+
+
+Particle weight 0.0002161576411907359
+
+
+
+＋
+├── LIN(0.45; 0.05, 0.18)
+└── PER(0.27, 0.15; 0.12)
+
+
+
+Particle weight 0.5354267607568092
+
+
+
+＋
+├── PER(0.27, 0.15; 0.12)
+└── LIN(0.22; 0.19, 0.18)
+
+
+
+Particle weight 0.43964210411237775
+
+
+
+＋
+├── LIN(0.09; 0.12, 0.11)
+└── PER(0.23, 0.15; 0.11)
+
+
+
+Particle weight 0.009312513845423434
+
+
+
+＋
+├── GE(1.72, 1.66; 0.13)
+└── PER(0.29, 0.15; 0.12)</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Mean forecasts, quantile forecasts, and probability densities values obtained via <a href="../api.html#AutoGP.predict"><code>AutoGP.predict</code></a> and <a href="../api.html#AutoGP.predict_proba"><code>AutoGP.predict_proba</code></a> are all in the transformed (log space).  Only quantile forecasts can be transformed back to direct space via <code>exp</code>.  Converting mean forecasts and probability densities can be performed by using the <a href="https://juliastats.org/Distributions.jl/stable/multivariate/#Distributions.MvLogNormal"><code>Distributions.MvLogNormal</code></a> constructor, as demonstrated below.</p></div></div><pre><code class="language-julia hljs">import Distributions
+log_mvn_components = [Distributions.MvLogNormal(d) for d in Distributions.components(mvn)]
+log_mvn_weights = Distributions.probs(mvn)
+log_mvn = Distributions.MixtureModel(log_mvn_components, log_mvn_weights);</code></pre><pre><code class="language-julia hljs">fig, ax = plt.subplots()
+ax.plot(ds_query, Distributions.mean(log_mvn), color=&quot;tab:blue&quot;, label=&quot;Correct Mean Forecasts in Direct Space&quot;)
+ax.plot(ds_query, exp.(Distributions.mean(mvn)), color=&quot;k&quot;, label=&quot;Incorrect Mean Forecasts in Direct Space&quot;)
+ax.axvline(df_test.ds[end], color=&quot;k&quot;, linestyle=&quot;--&quot;)
+ax.legend()</code></pre><p><img src="iclaims_files/iclaims_15_0.png" alt="png"/></p><pre><code class="nohighlight hljs">PyObject &lt;matplotlib.legend.Legend object at 0x7f3598672c80&gt;</code></pre><p>The difference between the blue and black curves is too small to observe on the scale above; let us plot the bias that arises from doing a naive transformation.</p><pre><code class="language-julia hljs">fig, ax = plt.subplots()
+ax.plot(ds_query, Distributions.mean(log_mvn) - exp.(Distributions.mean(mvn)));</code></pre><p><img src="iclaims_files/iclaims_17_0.png" alt="png"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="overview.html">« Overview</a><a class="docs-footer-nextpage" href="callbacks.html">Inspecting Online Inference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Friday 5 May 2023 20:29">Friday 5 May 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
