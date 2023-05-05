@@ -33,10 +33,12 @@ makedocs(
             "tutorials/iclaims.md",
             "tutorials/callbacks.md",
             "tutorials/greedy_mcmc.md",
+            "tutorials/test2.md",
         ],
         "Automatic Modeling API" => "api.md",
         "Gaussian Process Library" => "gp.md",
         "Utilities" => "utils.md",
+        "Test" => "test.md"
     ],
 )
 
