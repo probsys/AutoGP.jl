@@ -36,6 +36,6 @@ jobs:
         env:
           JULIA_NUM_THREADS: 8
         run: |
-          python3 -m pip install jupytext
+          python3 -m pip install jupytext matplotlib
           ls *.ipynb | xargs python3 -m jupytext --to=jl
           ls *.jl | xargs julia --project=../../..
