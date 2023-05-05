@@ -38,4 +38,4 @@ jobs:
         run: |
           python3 -m pip install jupytext matplotlib
           ls *.ipynb | xargs python3 -m jupytext --to=jl
-          ls *.jl | xargs julia --project=../../..
+          ls *.jl | xargs -n1 julia --project=../../..
