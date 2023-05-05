@@ -34,7 +34,7 @@ makedocs(
             "tutorials/callbacks.md",
             "tutorials/greedy_mcmc.md",
         ],
-        "Automatic Modeling API" => "api.md",
+        "AutoGP API" => "api.md",
         "Gaussian Process Library" => "gp.md",
         "Utilities" => "utils.md",
     ],

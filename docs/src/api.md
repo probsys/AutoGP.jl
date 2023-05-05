@@ -1,4 +1,4 @@
-# AutoGP
+# AutoGP API
 
 The purpose of this package is to automatically infer Gaussian process (GP)
 models of time series data, hence the name AutoGP.
