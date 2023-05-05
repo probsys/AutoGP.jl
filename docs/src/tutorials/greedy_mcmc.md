@@ -1,19 +1,3 @@
-<!--
-Copyright 2023 Google LLC
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
--->
-
 # Greedy Search and MCMC
 
 The [Model Fitting via SMC](@ref) section of the [Overview](@ref) tutorial showed how to learn the structure of Gaussian process time series models by using sequential Monte Carlo structure learning.  This tutorial will illustrate two alternative structure discovery methods:
@@ -52,7 +36,7 @@ ax.plot(ds, y, marker=".", markerfacecolor="none", markeredgecolor="k", color="b
 
 
     
-![png](greedy_mcmc_files/greedy_mcmc_5_0.png)
+![png](greedy_mcmc_files/greedy_mcmc_4_0.png)
     
 
 
@@ -119,7 +103,7 @@ fig
 
 
     
-![png](greedy_mcmc_files/greedy_mcmc_12_0.png)
+![png](greedy_mcmc_files/greedy_mcmc_11_0.png)
     
 
 
@@ -194,19 +178,19 @@ display(figures[end])
 
 
     
-![png](greedy_mcmc_files/greedy_mcmc_19_0.png)
+![png](greedy_mcmc_files/greedy_mcmc_18_0.png)
     
 
 
 
     
-![png](greedy_mcmc_files/greedy_mcmc_19_1.png)
+![png](greedy_mcmc_files/greedy_mcmc_18_1.png)
     
 
 
 
     
-![png](greedy_mcmc_files/greedy_mcmc_19_2.png)
+![png](greedy_mcmc_files/greedy_mcmc_18_2.png)
     
 
 

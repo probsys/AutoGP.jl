@@ -1,19 +1,3 @@
-<!--
-Copyright 2023 Google LLC
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
--->
-
 # Insurance Claims
 
 This tutorial uses AutoGP to discover time series models of weekly insurance claims data.
@@ -85,7 +69,7 @@ fig.set_size_inches((20, 10))
 
 
     
-![png](iclaims_files/iclaims_7_0.png)
+![png](iclaims_files/iclaims_6_0.png)
     
 
 
@@ -192,7 +176,7 @@ fig.set_size_inches((20, 10))
 
 
     
-![png](iclaims_files/iclaims_12_0.png)
+![png](iclaims_files/iclaims_11_0.png)
     
 
 
@@ -307,7 +291,7 @@ ax.legend()
 
 
     
-![png](iclaims_files/iclaims_16_0.png)
+![png](iclaims_files/iclaims_15_0.png)
     
 
 
@@ -328,6 +312,6 @@ ax.plot(ds_query, Distributions.mean(log_mvn) - exp.(Distributions.mean(mvn)));
 
 
     
-![png](iclaims_files/iclaims_18_0.png)
+![png](iclaims_files/iclaims_17_0.png)
     
 
