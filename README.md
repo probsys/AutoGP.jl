@@ -23,7 +23,7 @@ REPL (version 1.8+), type `]` to enter the Pkg REPL mode and run
 pkg> add AutoGP
 ```
 
-### Developer Notes
+## Developer Notes
 
 #### Building Documentation Locally
 
