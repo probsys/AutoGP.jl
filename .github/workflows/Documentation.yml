@@ -4,13 +4,12 @@
 name: Documentation
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - master
     tags: '*'
   pull_request:
-
-on: workflow_dispatch
 
 jobs:
   Documentation:
