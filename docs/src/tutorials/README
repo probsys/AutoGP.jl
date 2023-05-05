@@ -1,6 +1,6 @@
 All tutorials should be written or edited as .ipynb files.
 
-The script in ./build.sh will convert these to .jl and .md files.
+The script in ./build.sh will convert these notebooks to [.jl, .md, .html].
 
 If .md files should contain output, make that the .ipynb notebooks have
 been executed, either through the browser or command-line `jupyter`.

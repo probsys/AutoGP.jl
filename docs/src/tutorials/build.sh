@@ -16,6 +16,7 @@
 
 for x in $(ls *.ipynb); do
     python -m jupyter nbconvert --to markdown $x
+    python -m nbconvert --to html $x
     python -m jupytext --to jl $x
 done
 
