@@ -127,7 +127,7 @@ axes = Dict(0=>axes[1], (step=>ax for (step, ax) in zip(schedule, axes[2:end])).
 callback_fn = AutoGP.Callbacks.make_smc_callback(fn, model; axes=axes)
 
 # Perform inference.
-AutoGP.fit_smc!(model, schedule, 10, 10; shuffle=false, callback_fn=callback_fn);
+AutoGP.fit_smc!(model; schedule=schedule, n_mcmc=10, n_hmc=10, shuffle=false, callback_fn=callback_fn);
 ```
 
 

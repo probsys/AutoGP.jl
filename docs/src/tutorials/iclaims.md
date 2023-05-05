@@ -100,7 +100,7 @@ model = AutoGP.GPModel(df_train.ds, df_train.y; n_particles=8);
 ```julia
 AutoGP.seed!(10)
 schedule = AutoGP.Schedule.linear_schedule(n_train, .20)
-AutoGP.fit_smc!(model, schedule, 50, 10; shuffle=true, adaptive_resampling=false, verbose=true);
+AutoGP.fit_smc!(model; schedule=schedule, n_mcmc=50, n_hmc=10, shuffle=true, adaptive_resampling=false, verbose=true);
 ```
 
     Running SMC round 69/343

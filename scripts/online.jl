@@ -272,10 +272,10 @@ function run_dataset_anneal_data(config)
     end
 
     AutoGP.fit_smc!(
-        model,
-        schedule,
-        config.N_MCMC,
-        config.N_HMC;
+        model;
+        schedule=schedule,
+        n_mcmc=config.N_MCMC,
+        n_hmc=config.N_HMC,
         biased=config.BIASED,
         shuffle=config.SHUFFLE,
         adaptive_resampling=config.ADAPTIVE_RESAMPLING,

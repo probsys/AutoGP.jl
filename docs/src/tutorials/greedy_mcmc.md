@@ -180,7 +180,7 @@ end
 
 
 ```julia
-AutoGP.fit_mcmc!(model, 45, 10; callback_fn=fn_callback)
+AutoGP.fit_mcmc!(model; n_mcmc=45, n_hmc=10, callback_fn=fn_callback)
 ```
 
 Let's now show some plots that were collected by the callback during MCMC inference. The final plot shows an interesting example of how MCMC learning can reflect posterior uncertainty over the covariance structure.
