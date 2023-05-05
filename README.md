@@ -1,7 +1,8 @@
 # AutoGP.jl
 
 [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://fsaad.github.io/AutoGP.jl)
-![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/fsaad/AutoGP.jl/ContinuousIntegration.yml?branch=master)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/fsaad/AutoGP.jl/Tutorials.yml?branch=main)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/fsaad/AutoGP.jl/Documentation.yml?branch=main)
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/fsaad/AutoGP.jl)
 ![License](https://img.shields.io/github/license/fsaad/AutoGP.jl?color=lightgrey)
 

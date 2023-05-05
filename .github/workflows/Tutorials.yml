@@ -1,0 +1,37 @@
+# Adapted from https://github.com/marketplace/actions/run-julia-package-tests
+
+name: Tutorials
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - main
+  # pull_request:
+  #   branches:
+  #     - main
+
+jobs:
+  Tutorials:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        julia-version: ['1.8']
+        julia-arch: [x64]
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.julia-version }}
+          arch: ${{ matrix.julia-arch }}
+          show-versioninfo: true
+      - uses: julia-actions/julia-buildpkg@v1
+      - name: Test notebooks
+        env:
+          JULIA_NUM_THREADS: 8
+        working-directory: ./docs/src/tutorials
+        run: |
+          python3 -m pip install jupytext
+          ls *.ipynb | xargs python3 -m jupytext --to=jl
+          ls *.jl | xargs julia
