@@ -212,7 +212,7 @@ display(figures[end])
 
 ### MCMC vs SMC
 
-MCMC sampling using [`AutoGP.fit_mcmc!`](@ref) invokes the same transition kernels over structure and parameters as those used in particle rejuvenation step of [`AutoGP.fit_smc!`](@ref).  The fundamental difference is that [`AutoGP.fit_smc!`](@ref) anneals the posterior over subsets of data at each step, whereas [`AutoGP.fit_mcmc!`](@ref) uses the full data at each step.
+MCMC sampling using [`AutoGP.fit_mcmc!`](@ref) invokes the same transition kernels over structure and parameters as those used in particle rejuvenation step of [`AutoGP.fit_smc!`](@ref).  The main difference is that [`AutoGP.fit_smc!`](@ref) anneals the posterior over subsets of data at each step, whereas [`AutoGP.fit_mcmc!`](@ref) uses the full data at each step.
 
 The benefits of SMC include
 
