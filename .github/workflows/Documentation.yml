@@ -1,0 +1,28 @@
+# Adapted from
+# https://juliadocs.github.io/Documenter.jl/stable/man/hosting/#GitHub-Actions
+
+name: Documentation
+
+on:
+  push:
+    branches:
+      - master
+    tags: '*'
+  pull_request:
+
+jobs:
+  Documentation:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1.8'
+      - name: Build and deploy documentation
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCUMENTER_DEBUG: true
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+        run: julia --project=. docs/make.jl
