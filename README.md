@@ -1,5 +1,11 @@
 # AutoGP.jl
 
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://fsaad.github.io/AutoGP.jl)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/fsaad/AutoGP.jl/ContinuousIntegration.yml?branch=master)
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/fsaad/AutoGP.jl)
+![License](https://img.shields.io/github/license/fsaad/AutoGP.jl?color=lightgrey)
+
+
 This package contains the Julia reference implementation of AutoGP, a
 method for automatically discovering models of 1D time series data using
 Gaussian processes, as described in
