@@ -27,7 +27,6 @@ makedocs(
     modules=[AutoGP],
     pages=[
         "Home" => "index.md",
-        "Getting Started" => "getting_started.md",
         "Tutorials" => [
             "tutorials/overview.md",
             "tutorials/iclaims.md",

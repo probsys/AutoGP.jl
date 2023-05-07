@@ -71,11 +71,15 @@ Y(t_i)
 
 where PCFG denotes a [probabilistic-context free grammar](https://en.wikipedia.org/wiki/Probabilistic_context-free_grammar)
 that defines a language of covariance kernel expressions $k$,
+
 ```math
-B      &:= \textsc{Linear} \mid \textsc{Periodic} \mid \textsc{GammaExponential} \mid \dots \\
-\oplus &:= \textsc{+} \mid \textsc{*} \mid \textsc{ChangePoint} \\
-k      &:= B \mid \textsf{(}k_1 \oplus k_2\textsf{)}.
+\begin{aligned}
+B      &:= \texttt{Linear} \mid \texttt{Periodic} \mid \texttt{GammaExponential} \mid \dots \\
+\oplus &:= \texttt{+} \mid \texttt{*} \mid \texttt{ChangePoint} \\
+k      &:= B \mid \texttt{(}k_1 \oplus k_2\texttt{)}.
+\end{aligned}
 ```
+
 and $d(k)$ is the number of parameters in expression $k$.
 Given data ``\{(t_i,y_i)\}_{i=1}^n``, AutoGP [infers](@ref end_to_end_model_fitting)
 likely values of the symbolic structure of the covariance kernel $k$,
