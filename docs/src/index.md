@@ -39,4 +39,4 @@ publisher    = {PMLR},
 ## License
 
 AutoGP.jl is licensed under the Apache License, Version 2.0; refer to
-[LICENSE](https://github.com/fsaad/AutoGP.jl/LICENSE.md).
+[LICENSE](https://github.com/fsaad/AutoGP.jl/LICENSE.txt).
