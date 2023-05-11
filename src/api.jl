@@ -567,7 +567,10 @@ function predict_proba(model::GPModel, ds::IndexType, y::Vector{<:Real})
     components = Distributions.components(dist)
     probs = Distributions.probs(dist)
     n_particles = num_particles(model)
-    logps = Distributions.logpdf.(components, [y])
+    logps = @match y begin
+        []  => repeat([0.], n_particles)
+        _   => Distributions.logpdf.(components, [y])
+    end
     return DataFrames.DataFrame(
         "particle" => 1:n_particles,
         "weight"   => probs,
