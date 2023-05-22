@@ -28,6 +28,8 @@ pkg> add AutoGP
 
 Please see https://fsaad.github.io/AutoGP.jl
 
+<img style="float: left" src="./docs/src/assets/tsdl.161.gif" width="49%"/> <img style="float: center" src="./docs/src/assets/tsdl.533.gif" width="49%"/>
+
 ## Developer Notes
 
 #### Building Documentation
