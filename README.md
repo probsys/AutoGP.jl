@@ -15,6 +15,12 @@ Gaussian processes, as described in
 > Saad, F A; Patton, B J; Hoffmann, M D.; Saurous, R A; Mansinghka, V K.<br/>
 > ICML 2023: Proc. The 40th International Conference on Machine Learning.
 
+Given observed time series data, AutoGP uses Bayesian structure learning to
+synthesize covariance kernel functions and parameters for modeling the
+data, which is in contrast to traditional machine learning packages that
+only learn the parameters of a fixed, user-specified covariance kernel
+function.
+
 ## Installing
 
 The package can be added using the Julia package manager. From the Julia
