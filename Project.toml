@@ -1,7 +1,7 @@
 name = "AutoGP"
 uuid = "6eb593e7-dfb4-4e48-b98e-d7222cdf0053"
 authors = ["Feras A. Saad <fsaad@cmu.edu>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
