@@ -1,6 +1,0 @@
-All tutorials should be written or edited as .ipynb files.
-
-The script in ./build.sh will convert these notebooks to markdown (.md)
-files. If the markdown files should contain output, make sure that the
-.ipynb notebooks have been executed, either through the browser or
-command-line `jupyter`.
