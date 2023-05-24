@@ -8,33 +8,38 @@
 
 
 This package contains the Julia reference implementation of AutoGP, a
-method for automatically discovering models of 1D time series data using
-Gaussian processes, as described in
+method for automatically discovering Gaussian process models of univariate
+time series data, as described in
 
 > _Sequential Monte Carlo Learning for Time Series Structure Discovery_.<br/>
 > Saad, F A; Patton, B J; Hoffmann, M D.; Saurous, R A; Mansinghka, V K.<br/>
 > ICML 2023: Proc. The 40th International Conference on Machine Learning.
 
-Given observed time series data, AutoGP uses Bayesian structure learning to
-synthesize covariance kernel functions and parameters for modeling the
-data, which is in contrast to traditional machine learning packages that
-only learn the parameters of a fixed, user-specified covariance kernel
-function.
+Unlike traditional Gaussian process software packages that learn the
+numeric parameters of a user-specified covariance kernel function, AutoGP
+learns both covariance kernel functions and numeric parameters for a given
+time series dataset. The plots below show two examples of time series
+structure learning where AutoGP discovers periodic components, trends, and
+smoothly-varying temporal components.
+
+<img style="float: left" src="./docs/src/assets/tsdl.161.gif" width="49%"/> <img style="float: center" src="./docs/src/assets/tsdl.533.gif" width="49%"/>
 
 ## Installing
 
-The package can be added using the Julia package manager. From the Julia
+AutoGP can be installed using the Julia package manager. From the Julia
 REPL (version 1.8+), type `]` to enter the Pkg REPL mode and run
 
 ```
 pkg> add AutoGP
 ```
 
+Alternatively, use the terminal command
+`julia -e 'import Pkg; Pkg.add("AutoGP")'`.
+
 ## Tutorials
 
 Please see https://fsaad.github.io/AutoGP.jl
 
-<img style="float: left" src="./docs/src/assets/tsdl.161.gif" width="49%"/> <img style="float: center" src="./docs/src/assets/tsdl.533.gif" width="49%"/>
 
 ## Developer Notes
 
