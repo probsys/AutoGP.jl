@@ -15,12 +15,12 @@ time series data, as described in
 > Saad, F A; Patton, B J; Hoffmann, M D.; Saurous, R A; Mansinghka, V K.<br/>
 > ICML 2023: Proc. The 40th International Conference on Machine Learning.
 
-Unlike traditional Gaussian process software packages that learn the
-numeric parameters of a user-specified covariance kernel function, AutoGP
-learns both covariance kernel functions and numeric parameters for a given
-time series dataset. The plots below show two examples of time series
-structure learning where AutoGP discovers periodic components, trends, and
-smoothly-varying temporal components.
+Whereas traditional Gaussian process software packages focus on inferring
+the numeric parameters for a fixed (user-specified) covariance kernel
+function, AutoGP learns both covariance kernel functions and numeric
+parameters for a given dataset. The plots below show two examples of online
+time series structure discovery using AutoGP, which discovers periodic
+components, trends, and smoothly-varying temporal components.
 
 <img style="float: left" src="./docs/src/assets/tsdl.161.gif" width="49%"/> <img style="float: center" src="./docs/src/assets/tsdl.533.gif" width="49%"/>
 
