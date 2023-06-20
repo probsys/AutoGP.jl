@@ -29,7 +29,9 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
 
       - name: Instantiate project
-        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+        run: |
+          julia --project=. -e 'using Pkg; Pkg.instantiate()'
+          julia --project=. -e 'using Pkg; Pkg.add("PyPlot")'
 
       - name: Test notebooks
         working-directory: ./docs/src/tutorials
