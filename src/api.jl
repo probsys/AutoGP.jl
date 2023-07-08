@@ -21,6 +21,10 @@ import Gen
 
 using Match
 
+using Distributions: MixtureModel
+using Distributions: MvNormal
+using Distributions: Normal
+
 """
     seed!(seed)
 Set the random seed of the global random number generator.
@@ -450,14 +454,17 @@ with weights [`particle_weights`](@ref)`(model)`. These objects can be retrieved
 and
 [`Distributions.probs`](https://juliastats.org/Distributions.jl/stable/mixture/#Distributions.probs-Tuple{AbstractMixtureModel}), respectively.
 """
-function predict_mvn(model::GPModel, ds::IndexType; noise_pred::Union{Nothing,Float64}=nothing)
+function predict_mvn(
+        model::GPModel,
+        ds::IndexType;
+        noise_pred::Union{Nothing,Float64}=nothing)
     if !(eltype(ds) <: eltype(model.ds))
         error("Invalid time $(ds), expected $(eltype(model.ds))")
     end
     ds_numeric = Transforms.apply(model.ds_transform, to_numeric(ds))
     n_particles = num_particles(model)
     weights = particle_weights(model)
-    distributions = Vector{Distributions.MvNormal}(undef, n_particles)
+    distributions = Vector{MvNormal}(undef, n_particles)
     Threads.@threads for i=1:n_particles
         dist = Inference.predict_mvn(
                     model.pf_state.traces[i],
@@ -469,9 +476,78 @@ function predict_mvn(model::GPModel, ds::IndexType; noise_pred::Union{Nothing,Fl
         # The same is not true for if model.y_transform is log, in which
         # case we would need to return Distributions.MvLogNormal.
         mu, cov = Transforms.unapply_mean_var(model.y_transform, mu, cov)
-        distributions[i] = Distributions.MvNormal(mu, cov)
+        distributions[i] = MvNormal(mu, cov)
     end
-    return Distributions.MixtureModel(distributions, weights)
+    return MixtureModel(distributions, weights)
+end
+
+"""
+    (x::Vector, success::Bool) = predict_quantile(
+        model::GPModel, ds::IndexType, q::Real;
+        noise_pred::Union{Nothing,Float64}=nothing, tol=1e-5, max_iter=1e6)
+
+Evaluates the inverse cumulative distribution function (CDF) of the
+multivariate Gaussian mixture model returned by [`predict_mvn`](@ref) at
+`q` (between 0 and 1, exclusive) separately for each dimension. The
+returned vector `x` has the same length as the index points `ds`.
+
+# Note
+
+The inverse CDF is numerically estimated using a binary search algorithm.
+The keyword arguments `tol` and `max_iter`  correspond to the desired
+absolute tolerance of the estimate and the maximum number of binary search
+iterations, respectively. The returned Boolean variable `success` indicates
+whether the returned value `x` has been located to within the specified
+error tolerance.
+
+# See also
+
+- [`predict_mvn`](@ref)
+"""
+function predict_quantile(
+        model::GPModel,
+        ds::IndexType,
+        q::Real;
+        noise_pred::Union{Nothing,Float64}=nothing,
+        tol=1e-5,
+        max_iter=1e6)
+    (0 < q < 1) || error("Quantile must be in (0,1).")
+    mvn = predict_mvn(model, ds; noise_pred=noise_pred)
+    components = Distributions.components(mvn)
+    means = hcat(Distributions.mean.(components)...)
+    vars = hcat(Distributions.var.(components)...)
+    mixtures = [Normal.(m, sqrt.(v)) for (m, v) in zip(eachrow(means), eachrow(vars))]
+    weights = Distributions.probs(mvn)
+    mixture = MixtureModel.(mixtures, Ref(weights))
+    @assert length(mixture) == length(ds)
+    @assert all(length.(mixtures) .== num_particles(model))
+    x = zeros(length(mixture))
+    iter = 0
+    x_max = repeat([Inf], length(mixture))
+    x_min = repeat([-Inf], length(mixture))
+    success = false
+    while iter < max_iter
+        epsilon = @. Distributions.cdf(mixture, x) - q
+        if all(abs.(epsilon) .< tol)
+            success = true
+            break
+        end
+        x_max = ifelse.(epsilon .> 0, x, x_max)
+        x_min = ifelse.(epsilon .< 0, x, x_min)
+        x_hi = min.(x_max, (@. 2^sign(x)*x + (x == 0)))
+        x_lo = max.(x_min, (@. 2^-sign(x)*x - (x == 0)))
+        x_hi_mid = Distributions.mean([x, x_hi])
+        x_lo_mid = Distributions.mean([x, x_lo])
+        x = ifelse.(
+                abs.(epsilon) .< tol,
+                x,
+                ifelse.(
+                    epsilon .< 0,
+                    x_hi_mid,
+                    x_lo_mid))
+        iter += 1
+    end
+    return (x, success)
 end
 
 """
