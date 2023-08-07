@@ -13,7 +13,8 @@ time series data, as described in
 
 > _Sequential Monte Carlo Learning for Time Series Structure Discovery_.<br/>
 > Saad, F A; Patton, B J; Hoffmann, M D.; Saurous, R A; Mansinghka, V K.<br/>
-> ICML 2023: Proc. The 40th International Conference on Machine Learning.
+> ICML 2023: Proc. The 40th International Conference on Machine Learning.<br/>
+> Proceedings of Machine Learning Research vol. 202, pages 29473-29489, 2023.
 
 Whereas traditional Gaussian process software packages focus on inferring
 the numeric parameters for a fixed (user-specified) covariance kernel
@@ -63,12 +64,12 @@ $ python3 -m http.server --directory docs/build/ --bind localhost 9090
 
 ```bibtex
 @inproceedings{saad2023icml,
-title        = {Sequential Monte Carlo Learning for Time Series Structure Discovery},
+title        = {Sequential {Monte} {Carlo} Learning for Time Series Structure Discovery},
 author       = {Saad, Feras A. and Patton, Brian J. and Hoffmann, Matthew D. and Saurous, Rif A. and Mansinghka, V. K.},
 booktitle    = {Proceedings of the 40th International Conference on Machine Learning},
 series       = {Proceedings of Machine Learning Research},
-fvolume      = {},
-fpages       = {},
+volume       = {202},
+pages        = {29473--29489},
 year         = {2023},
 publisher    = {PMLR},
 }
