@@ -88,18 +88,20 @@ AutoGP.fit_smc!(model; schedule=schedule, n_mcmc=50, n_hmc=10, shuffle=true, ada
 ```
 
     Running SMC round 69/343
-    weights [3.38e-32, 4.11e-20, 7.26e-29, 1.02e-44, 4.74e-57, 9.10e-04, 9.99e-01, 2.71e-17]
+    Particle Weights: [3.38e-32, 4.11e-20, 7.26e-29, 1.02e-44, 4.74e-57, 9.10e-04, 9.99e-01, 2.71e-17]
+    Particle ESS: 0.1252276603207894
     resampled true
     accepted MCMC[4/50] HMC[40/40]
     accepted MCMC[6/50] HMC[48/50]
-    accepted MCMC[7/50] HMC[61/63]
-    accepted MCMC[9/50] HMC[73/77]
     accepted MCMC[8/50] HMC[62/64]
+    accepted MCMC[7/50] HMC[61/63]
     accepted MCMC[7/50] HMC[68/69]
+    accepted MCMC[9/50] HMC[73/77]
     accepted MCMC[12/50] HMC[92/97]
     accepted MCMC[14/50] HMC[114/118]
     Running SMC round 138/343
-    weights [1.10e-01, 1.39e-01, 1.98e-01, 1.71e-01, 1.66e-01, 1.78e-01, 1.80e-02, 2.08e-02]
+    Particle Weights: [1.10e-01, 1.39e-01, 1.98e-01, 1.71e-01, 1.66e-01, 1.78e-01, 1.80e-02, 2.08e-02]
+    Particle ESS: 0.7836676673226702
     resampled true
     accepted MCMC[2/50] HMC[3/5]
     accepted MCMC[3/50] HMC[15/17]
@@ -110,7 +112,8 @@ AutoGP.fit_smc!(model; schedule=schedule, n_mcmc=50, n_hmc=10, shuffle=true, ada
     accepted MCMC[12/50] HMC[20/32]
     accepted MCMC[16/50] HMC[62/73]
     Running SMC round 207/343
-    weights [1.21e-18, 1.72e-18, 1.00e+00, 3.00e-20, 1.48e-12, 2.59e-17, 8.86e-18, 1.49e-17]
+    Particle Weights: [1.21e-18, 1.72e-18, 1.00e+00, 3.00e-20, 1.48e-12, 2.59e-17, 8.86e-18, 1.49e-17]
+    Particle ESS: 0.12500000000036948
     resampled true
     accepted MCMC[8/50] HMC[0/8]
     accepted MCMC[10/50] HMC[0/10]
@@ -121,26 +124,28 @@ AutoGP.fit_smc!(model; schedule=schedule, n_mcmc=50, n_hmc=10, shuffle=true, ada
     accepted MCMC[13/50] HMC[0/13]
     accepted MCMC[16/50] HMC[2/18]
     Running SMC round 276/343
-    weights [1.52e-01, 1.63e-04, 1.51e-01, 4.79e-01, 1.04e-01, 9.47e-02, 1.76e-02, 1.36e-03]
+    Particle Weights: [1.52e-01, 1.63e-04, 1.51e-01, 4.79e-01, 1.04e-01, 9.47e-02, 1.76e-02, 1.36e-03]
+    Particle ESS: 0.42322820857724425
     resampled true
     accepted MCMC[7/50] HMC[0/7]
-    accepted MCMC[12/50] HMC[0/12]
     accepted MCMC[11/50] HMC[0/11]
-    accepted MCMC[12/50] HMC[0/12]
     accepted MCMC[11/50] HMC[1/12]
+    accepted MCMC[12/50] HMC[0/12]
+    accepted MCMC[12/50] HMC[0/12]
     accepted MCMC[13/50] HMC[1/14]
     accepted MCMC[19/50] HMC[0/19]
     accepted MCMC[20/50] HMC[0/20]
     Running SMC round 343/343
-    weights [4.25e-03, 3.87e-04, 5.39e-03, 5.37e-03, 2.16e-04, 5.35e-01, 4.40e-01, 9.31e-03]
+    Particle Weights: [4.25e-03, 3.87e-04, 5.39e-03, 5.37e-03, 2.16e-04, 5.35e-01, 4.40e-01, 9.31e-03]
+    Particle ESS: 0.2603461961652077
     accepted MCMC[10/50] HMC[0/10]
     accepted MCMC[10/50] HMC[0/10]
     accepted MCMC[12/50] HMC[0/12]
-    accepted MCMC[13/50] HMC[1/14]
     accepted MCMC[14/50] HMC[0/14]
+    accepted MCMC[13/50] HMC[1/14]
     accepted MCMC[16/50] HMC[0/16]
-    accepted MCMC[17/50] HMC[0/17]
     accepted MCMC[14/50] HMC[1/15]
+    accepted MCMC[17/50] HMC[0/17]
 
 
 Plotting the forecasts from each particle reflects the structural uncertainty.  7/8 particles have inferred a periodic component ([`AutoGP.GP.Periodic`](@ref)) with additive linear trend [`AutoGP.GP.Linear`](@ref). 1/8 of the particles has inferred a sum of a periodic kernel and gamma exponential ([`AutoGP.GP.GammaExponential`](@ref)) kernel, which is stationary but not "smooth" (formally, not mean-square differentiable).
@@ -188,7 +193,7 @@ for (w, k) in zip(AutoGP.particle_weights(model), AutoGP.covariance_kernels(mode
 end
 ```
 
-    Particle weight 0.004250523793423254
+    Particle weight 0.004250523793201452
 
 
 
@@ -198,7 +203,7 @@ end
 
 
 
-    Particle weight 0.0003867955857232888
+    Particle weight 0.00038679558572478394
 
 
 
@@ -208,7 +213,7 @@ end
 
 
 
-    Particle weight 0.0053919770385446346
+    Particle weight 0.0053919770385277765
 
 
 
@@ -218,7 +223,7 @@ end
 
 
 
-    Particle weight 0.005373167226504197
+    Particle weight 0.005373167226484039
 
 
 
@@ -228,7 +233,7 @@ end
 
 
 
-    Particle weight 0.0002161576411907359
+    Particle weight 0.00021615764118894197
 
 
 
@@ -238,7 +243,7 @@ end
 
 
 
-    Particle weight 0.5354267607568092
+    Particle weight 0.5354267607554092
 
 
 
@@ -248,7 +253,7 @@ end
 
 
 
-    Particle weight 0.43964210411237775
+    Particle weight 0.43964210411447696
 
 
 
@@ -258,7 +263,7 @@ end
 
 
 
-    Particle weight 0.009312513845423434
+    Particle weight 0.00931251384499995
 
 
 
@@ -266,6 +271,30 @@ end
     ├── GE(1.72, 1.66; 0.13)
     └── PER(0.29, 0.15; 0.12)
 
+
+
+We can also query the overall quantiles of the predictive distribution over new data by using [`AutoGP.predict_quantile`](@ref).
+
+
+```julia
+# Obtain overall quantiles.
+quantiles_lo, = AutoGP.predict_quantile.(Ref(model), Ref(ds_query), .025, tol=1e-6)
+quantiles_md, = AutoGP.predict_quantile.(Ref(model), Ref(ds_query), .50, tol=1e-6)
+quantiles_hi, = AutoGP.predict_quantile.(Ref(model), Ref(ds_query), .975, tol=1e-6)
+
+# Plot the combined predictions.
+fig, ax = plt.subplots()
+ax.scatter(df_train.ds, df_train.y, marker=".", color="k", label="Observed Data")
+ax.scatter(df_test.ds, df_test.y, marker=".", color="r", label="Test Data")
+ax.plot(ds_query, quantiles_md, color="k", linewidth=1)
+ax.fill_between(ds_query, quantiles_lo, quantiles_hi, color="tab:blue", alpha=.5)
+fig.set_size_inches((20, 10))
+```
+
+
+    
+![png](iclaims_files/iclaims_14_0.png)
+    
 
 
 !!! note
@@ -291,18 +320,18 @@ ax.legend()
 
 
     
-![png](iclaims_files/iclaims_15_0.png)
+![png](iclaims_files/iclaims_17_0.png)
     
 
 
 
 
 
-    PyObject <matplotlib.legend.Legend object at 0x7f3598672c80>
+    PyObject <matplotlib.legend.Legend object at 0x7f5b068d02e0>
 
 
 
-The difference between the blue and black curves is too small to observe on the scale above; let us plot the bias that arises from doing a naive transformation.
+The difference between the blue and black curves is too small to observe on the scale above; let us plot the bias that arises from doing a naive transformation of the predictive mean.
 
 
 ```julia
@@ -312,6 +341,6 @@ ax.plot(ds_query, Distributions.mean(log_mvn) - exp.(Distributions.mean(mvn)));
 
 
     
-![png](iclaims_files/iclaims_17_0.png)
+![png](iclaims_files/iclaims_19_0.png)
     
 
