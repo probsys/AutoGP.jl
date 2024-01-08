@@ -39,4 +39,4 @@ makedocs(
     ],
 )
 
-deploydocs(repo="github.com/fsaad/AutoGP.jl.git")
+deploydocs(repo="github.com/probsys/AutoGP.jl.git")
