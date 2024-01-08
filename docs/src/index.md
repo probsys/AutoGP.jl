@@ -3,8 +3,7 @@
 A Julia package for learning the covariance structure of Gaussian process time
 series models.
 
-<!-- ![png](assets/tsdl.161.gif) -->
-[<img src="assets/tsdl.161.gif" width="49%"/>](assets/tsdl.161.gif)
+[png](assets/tsdl.161.gif)
 
 
 ***
