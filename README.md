@@ -1,10 +1,10 @@
 # AutoGP.jl
 
-[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://fsaad.github.io/AutoGP.jl/)
-[![GitHub Action Status](https://github.com/fsaad/AutoGP.jl/workflows/Documentation/badge.svg)](https://github.com/fsaad/AutoGP.jl/actions/workflows/Documentation.yml)
-[![GitHub Action Status](https://github.com/fsaad/AutoGP.jl/workflows/Tutorials/badge.svg)](https://github.com/fsaad/AutoGP.jl/actions/workflows/Tutorials.yml)
-[![Git Tag](https://img.shields.io/github/v/tag/fsaad/AutoGP.jl)](https://github.com/fsaad/AutoGP.jl/tags)
-[![License](https://img.shields.io/github/license/fsaad/AutoGP.jl?color=lightgrey)](https://github.com/fsaad/AutoGP.jl/blob/main/LICENSE.txt)
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://probsys.github.io/AutoGP.jl/)
+[![GitHub Action Status](https://github.com/probsys/AutoGP.jl/workflows/Documentation/badge.svg)](https://github.com/probsys/AutoGP.jl/actions/workflows/Documentation.yml)
+[![GitHub Action Status](https://github.com/probsys/AutoGP.jl/workflows/Tutorials/badge.svg)](https://github.com/probsys/AutoGP.jl/actions/workflows/Tutorials.yml)
+[![Git Tag](https://img.shields.io/github/v/tag/probsys/AutoGP.jl)](https://github.com/probsys/AutoGP.jl/tags)
+[![License](https://img.shields.io/github/license/probsys/AutoGP.jl?color=lightgrey)](https://github.com/probsys/AutoGP.jl/blob/main/LICENSE.txt)
 
 
 This package contains the Julia reference implementation of AutoGP, a
@@ -39,7 +39,7 @@ Alternatively, use the terminal command
 
 ## Tutorials
 
-Please see https://fsaad.github.io/AutoGP.jl
+Please see https://probsys.github.io/AutoGP.jl
 
 
 ## Developer Notes
