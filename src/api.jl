@@ -148,15 +148,6 @@ observation_noise_variances(model::GPModel) = begin
     return Transforms.unapply_var.([model.y_transform], noises)
 end
 
-function get_observations_choicemap(trace::Gen.Trace)
-    config = Gen.get_args(trace)[2]
-    observations = Gen.choicemap((:xs, trace[:xs]))
-    if !isnothing(config.noise)
-        observations[:noise] = trace[:noise]
-    end
-    return observations
-end
-
 """
     fit_smc!(
         model::GPModel;
@@ -280,7 +271,7 @@ function fit_mcmc!(
         Threads.@threads for i=1:n_particles
             TimeIt.@timeit elapsed[i] begin
                 trace = model.pf_state.traces[i]
-                observations = get_observations_choicemap(trace)
+                observations = Inference.get_observations_choicemap(trace)
                 trace, stats = Inference.rejuvenate_particle_structure(
                             trace, 1, n_hmc, biased;
                             hmc_config=hmc_config, verbose=verbose,
@@ -372,7 +363,7 @@ Perform `n_hmc` steps of Hamiltonian Monte Carlo sampling on the parameters.
 function mcmc_parameters!(model::GPModel, n_hmc::Integer; verbose::Bool=false, check::Bool=false)
     Threads.@threads for i=1:num_particles(model)
         trace = model.pf_state.traces[i]
-        observations = get_observations_choicemap(trace)
+        observations = Inference.get_observations_choicemap(trace)
         trace, n_accept = Inference.rejuvenate_particle_parameters(
             trace, n_hmc; verbose=verbose, check=check, observations=observations)
         model.pf_state.traces[i] = trace
@@ -397,7 +388,7 @@ function mcmc_structure!(
         check::Bool=false)
     Threads.@threads for i=1:num_particles(model)
         trace = model.pf_state.traces[i]
-        observations = get_observations_choicemap(trace)
+        observations = Inference.get_observations_choicemap(trace)
         trace, stats = Inference.rejuvenate_particle_structure(
                     trace, n_mcmc, n_hmc, biased;
                     hmc_config=hmc_config, verbose=verbose,

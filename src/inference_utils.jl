@@ -244,3 +244,12 @@ function node_to_choicemap(node::ChangePoint, idx::Int, config::GPConfig; params
     c_r = node_to_choicemap(node.right, idx_r, config; params=params)
     return merge(choices, c_l, c_r)
 end
+
+function get_observations_choicemap(trace::Gen.Trace)
+    config = Gen.get_args(trace)[2]
+    observations = Gen.choicemap((:xs, trace[:xs]))
+    if !isnothing(config.noise)
+        observations[:noise] = trace[:noise]
+    end
+    return observations
+end
