@@ -253,3 +253,17 @@ function get_observations_choicemap(trace::Gen.Trace)
     end
     return observations
 end
+
+function node_to_trace(node::Node, trace::Gen.Trace)
+    config = Gen.get_args(trace)[2]
+    choicemap_obs = get_observations_choicemap(trace)
+    choicemap_node = Gen.choicemap()
+    Gen.set_submap!(choicemap_node, :tree, node_to_choicemap(node, config))
+    constraints = merge(choicemap_node, choicemap_obs)
+    constraints[:noise] = trace[:noise]
+    return Gen.generate(
+        Gen.get_gen_fn(trace),
+        Gen.get_args(trace),
+        constraints,
+        )[1]
+end
