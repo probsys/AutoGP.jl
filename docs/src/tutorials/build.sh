@@ -16,7 +16,7 @@
 
 set -Ceux
 
-notebooks=${1:-$(ls *.ipynb)}
+notebooks=${@:-$(ls *.ipynb)}
 
 for x in ${notebooks}; do
     python -m jupyter nbconvert --to markdown $x
