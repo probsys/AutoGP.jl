@@ -1,6 +1,6 @@
 # Greedy Search and MCMC
 
-The [Model Fitting via SMC](@ref) section of the [Overview](@ref) tutorial showed how to learn the structure of Gaussian process time series models by using sequential Monte Carlo structure learning.  This tutorial will illustrate two alternative structure discovery methods:
+The Model Fitting via SMC section of the [Overview](@ref) tutorial showed how to learn the structure of Gaussian process time series models by using sequential Monte Carlo structure learning.  This tutorial will illustrate two alternative structure discovery methods:
 
 1. Greedy search ([`AutoGP.fit_greedy!`](@ref))
 2. MCMC sampling ([`AutoGP.fit_mcmc!`](@ref))
