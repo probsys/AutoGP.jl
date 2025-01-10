@@ -14,9 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-for x in $(ls *.ipynb); do
+set -Ceux
+
+notebooks=${@:-$(ls *.ipynb)}
+
+for x in ${notebooks}; do
     python -m jupyter nbconvert --to markdown $x
-    python -m jupytext --to jl $x
+    # python -m jupytext --to jl $x
 done
 
 rm -rf .ipynb_checkpoints/
