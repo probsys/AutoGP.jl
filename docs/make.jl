@@ -31,6 +31,7 @@ makedocs(
             "tutorials/overview.md",
             "tutorials/iclaims.md",
             "tutorials/callbacks.md",
+            "tutorials/decomposition.md",
             "tutorials/greedy_mcmc.md",
         ],
         "AutoGP API" => "api.md",
