@@ -72,6 +72,16 @@ Base.isapprox(a::Node, b::Node) =
 depth(::LeafNode) = 1
 depth(node::BinaryOpNode) = node.depth
 
+"""
+    unroll(node::Node)
+
+Unroll a covariance kernel into a flat Vector of all intermediate kernels.
+"""
+function unroll end
+unroll(node::LeafNode) = [node]
+unroll(node::BinaryOpNode) = vcat(unroll(node.left), unroll(node.right), node)
+
+
 @doc raw"""
 
     WhiteNoise(value)
@@ -527,7 +537,7 @@ function _show_pretty(io::IO, node::LeafNode, pre, vert_bars::Tuple; first=false
     print(io, indent_str * "$(pretty(node))\n")
 end
 
-_pretty_BinaryOpNode(node::Plus) = '\uFF0B'
+_pretty_BinaryOpNode(node::Plus) = '+'
 _pretty_BinaryOpNode(node::Times) = '\u00D7'
 _pretty_BinaryOpNode(node::ChangePoint) = ("CP$((node.location,node.scale))")
 function _show_pretty(io::IO, node::BinaryOpNode, pre, vert_bars::Tuple; first=false, last=true)
@@ -614,6 +624,7 @@ export BinaryOpNode
 export eval_cov
 export compute_cov_matrix
 export compute_cov_matrix_vectorized
+export unroll
 
 export WhiteNoise
 export Constant

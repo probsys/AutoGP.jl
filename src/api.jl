@@ -148,15 +148,6 @@ observation_noise_variances(model::GPModel) = begin
     return Transforms.unapply_var.([model.y_transform], noises)
 end
 
-function get_observations_choicemap(trace::Gen.Trace)
-    config = Gen.get_args(trace)[2]
-    observations = Gen.choicemap((:xs, trace[:xs]))
-    if !isnothing(config.noise)
-        observations[:noise] = trace[:noise]
-    end
-    return observations
-end
-
 """
     fit_smc!(
         model::GPModel;
@@ -280,7 +271,7 @@ function fit_mcmc!(
         Threads.@threads for i=1:n_particles
             TimeIt.@timeit elapsed[i] begin
                 trace = model.pf_state.traces[i]
-                observations = get_observations_choicemap(trace)
+                observations = Inference.get_observations_choicemap(trace)
                 trace, stats = Inference.rejuvenate_particle_structure(
                             trace, 1, n_hmc, biased;
                             hmc_config=hmc_config, verbose=verbose,
@@ -372,7 +363,7 @@ Perform `n_hmc` steps of Hamiltonian Monte Carlo sampling on the parameters.
 function mcmc_parameters!(model::GPModel, n_hmc::Integer; verbose::Bool=false, check::Bool=false)
     Threads.@threads for i=1:num_particles(model)
         trace = model.pf_state.traces[i]
-        observations = get_observations_choicemap(trace)
+        observations = Inference.get_observations_choicemap(trace)
         trace, n_accept = Inference.rejuvenate_particle_parameters(
             trace, n_hmc; verbose=verbose, check=check, observations=observations)
         model.pf_state.traces[i] = trace
@@ -397,7 +388,7 @@ function mcmc_structure!(
         check::Bool=false)
     Threads.@threads for i=1:num_particles(model)
         trace = model.pf_state.traces[i]
-        observations = get_observations_choicemap(trace)
+        observations = Inference.get_observations_choicemap(trace)
         trace, stats = Inference.rejuvenate_particle_structure(
                     trace, n_mcmc, n_hmc, biased;
                     hmc_config=hmc_config, verbose=verbose,
@@ -658,4 +649,56 @@ function Base.show(df::DataFrames.DataFrame)
     return Base.show(df::DataFrames.DataFrame;
         summary=false, header_crayon=DataFrames.PrettyTables.Crayons.Crayon(),
         eltypes=false, rowlabel=Symbol())
+end
+
+"""
+    function decompose(model::GPModel)
+
+Decompose each particle within `model` into its constituent kernels.
+Supposing that [`num_particles`](@ref)`(model)` equals ``k``, the return
+value `models::Vector{GPModel}` of `decompose` is a length-``k`` vector of
+[`GPModel`](@ref) instances.
+
+Therefore, `models[i]` is a [`GPModel`](@ref) that represents the
+decomposition of particle `i` in `model` into its constituent kernels. Each
+particle in `models[i]` corresponds to a kernel fragment in the covariance
+for particle `i` of `model` (i.e., one particle for each [`GP.Node`](@ref)
+in the covariance kernel).
+
+The weights of `models[i]` are arbitrary and have no meaningful value.
+
+This function is particularly useful for visualizing the individual time
+series structures that make up each particle of `model`.
+"""
+function decompose(model::GPModel)
+    kernels = covariance_kernels(model)
+    unrolled = map(GP.unroll, kernels)
+    @assert length(kernels) == num_particles(model)
+    models = Vector{GPModel}(undef, length(kernels))
+    # ERROR: type GPConfig has no field WhiteNoise
+    # noises = Model.transform_param.(
+    #         :noise,
+    #         [trace[:noise] for trace in model.pf_state.traces],)
+    #     .+ AutoGP.Model.JITTER
+    for (i, kernel_list::Vector{GP.Node}) in enumerate(unrolled)
+        # ERROR: type GPConfig has no field WhiteNoise
+        # Add observation noise as a WhiteNoise kernel.
+        # typeof(kernel_list)
+        # push!(kernel_list, GP.WhiteNoise(noises[i]))
+        # Initialize new GPModel.
+        models[i] = GPModel(
+                model.ds, model.y;
+                n_particles=length(kernel_list), config=model.config)
+        # -- Copy transforms, since add_data! may have been called on model.
+        models[i].ds_transform = model.ds_transform
+        models[i].y_transform = model.y_transform
+        # Force update each particle to match the kernel fragment.
+        for (j, trace) in enumerate(models[i].pf_state.traces)
+            models[i].pf_state.traces[j] = Inference.node_to_trace(
+                kernel_list[j], model.pf_state.traces[i])
+        end
+        # Weights are arbitrary.
+        models[i].pf_state.log_weights = zeros(length(models[i].pf_state.traces))
+    end
+    return models
 end

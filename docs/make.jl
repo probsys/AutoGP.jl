@@ -31,6 +31,7 @@ makedocs(
             "tutorials/overview.md",
             "tutorials/iclaims.md",
             "tutorials/callbacks.md",
+            "tutorials/decomposition.md",
             "tutorials/greedy_mcmc.md",
         ],
         "AutoGP API" => "api.md",
@@ -39,4 +40,12 @@ makedocs(
     ],
 )
 
-deploydocs(repo="github.com/fsaad/AutoGP.jl.git")
+deploydocs(
+    repo="github.com/probsys/AutoGP.jl.git",
+    versions = [
+        "stable" => "v^",
+        "v#.#",
+        "v#.#.#",
+        "dev" => "dev",
+        ],
+    )
