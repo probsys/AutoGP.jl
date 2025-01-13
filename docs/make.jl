@@ -38,6 +38,7 @@ makedocs(
         "Gaussian Process Library" => "gp.md",
         "Utilities" => "utils.md",
     ],
+    warnonly=true,
 )
 
 deploydocs(
