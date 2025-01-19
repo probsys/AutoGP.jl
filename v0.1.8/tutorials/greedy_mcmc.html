@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Greedy Search and MCMC · AutoGP</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../index.html"><img src="../assets/logo.svg" alt="AutoGP logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../index.html">AutoGP</a></span></div><form class="docs-search" action="../search.html"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../index.html">Home</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="overview.html">Overview</a></li><li><a class="tocitem" href="iclaims.html">Insurance Claims</a></li><li><a class="tocitem" href="callbacks.html">Inspecting Online Inference</a></li><li><a class="tocitem" href="decomposition.html">Time Series Decomposition</a></li><li class="is-active"><a class="tocitem" href="greedy_mcmc.html">Greedy Search and MCMC</a><ul class="internal"><li><a class="tocitem" href="#Greedy-Search"><span>Greedy Search</span></a></li><li><a class="tocitem" href="#MCMC"><span>MCMC</span></a></li></ul></li></ul></li><li><a class="tocitem" href="../api.html">AutoGP API</a></li><li><a class="tocitem" href="../gp.html">Gaussian Process Library</a></li><li><a class="tocitem" href="../utils.html">Utilities</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href="greedy_mcmc.html">Greedy Search and MCMC</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="greedy_mcmc.html">Greedy Search and MCMC</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/probsys/AutoGP.jl/blob/main/docs/src/tutorials/greedy_mcmc.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Greedy-Search-and-MCMC"><a class="docs-heading-anchor" href="#Greedy-Search-and-MCMC">Greedy Search and MCMC</a><a id="Greedy-Search-and-MCMC-1"></a><a class="docs-heading-anchor-permalink" href="#Greedy-Search-and-MCMC" title="Permalink"></a></h1><p>The Model Fitting via SMC section of the <a href="overview.html#Overview">Overview</a> tutorial showed how to learn the structure of Gaussian process time series models by using sequential Monte Carlo structure learning.  This tutorial will illustrate two alternative structure discovery methods:</p><ol><li>Greedy search (<a href="../api.html#AutoGP.fit_greedy!"><code>AutoGP.fit_greedy!</code></a>)</li><li>MCMC sampling (<a href="../api.html#AutoGP.fit_mcmc!"><code>AutoGP.fit_mcmc!</code></a>)</li></ol><pre><code class="language-julia hljs">import AutoGP
+import CSV
+import Dates
+import DataFrames
+import Distributions
+
+using AutoGP.GP
+using PyPlot: plt</code></pre><p>The synthetic data generated below is the same as the data used in the <a href="callbacks.html#Inspecting-Online-Inference">Inspecting Online Inference</a> tutorial.</p><pre><code class="language-julia hljs">AutoGP.seed!(2)
+cov = (Linear(1,0,50) * Periodic(5,2)) + GammaExponential(1,1)
+noise = .1
+n = 100
+
+ds = Vector{Float64}(range(0, 20, length=n))
+dist = Distributions.MvNormal(cov, noise, Float64[], Float64[], ds)
+y = Distributions.rand(dist);
+
+fig, ax = plt.subplots(figsize=(6, 4), dpi=100, tight_layout=true)
+ax.plot(ds, y, marker=&quot;.&quot;, markerfacecolor=&quot;none&quot;, markeredgecolor=&quot;k&quot;, color=&quot;black&quot;);</code></pre><p><img src="greedy_mcmc_files/greedy_mcmc_4_0.png" alt="png"/></p><h2 id="Greedy-Search"><a class="docs-heading-anchor" href="#Greedy-Search">Greedy Search</a><a id="Greedy-Search-1"></a><a class="docs-heading-anchor-permalink" href="#Greedy-Search" title="Permalink"></a></h2><p>To perform greedy search, the <code>model::GPModel</code> object must have a single particle.  Moreover, greedy search does not currently supported <a href="../gp.html#AutoGP.GP.ChangePoint"><code>AutoGP.GP.ChangePoint</code></a> covariance structures.  We can disable changepoints by using a custom <a href="../gp.html#AutoGP.GP.GPConfig"><code>AutoGP.GP.GPConfig</code></a>, as shown below.</p><pre><code class="language-julia hljs">model = AutoGP.GPModel(ds, y; n_particles=1, config=GP.GPConfig(changepoints=false));</code></pre><p>Greedy search also supports callback functions to inspect inference.  The callback function below will be invoked at each stage of the greedy search.  We will plot <a href="https://en.wikipedia.org/wiki/Akaike_information_criterion">AIC</a> at each stage and the corresponding covariance structure.</p><pre><code class="language-julia hljs">fig, axs = plt.subplots(nrows=2, ncols=5, figsize=(15, 15), dpi=150)
+axs = permutedims(axs)
+fig.set_tight_layout(true)
+plt.close(fig)
+
+function fn_callback(; kwargs...)
+    model = kwargs[:model]
+    step = kwargs[:step]
+    aic = kwargs[:aic]
+    
+    ds_query = vcat(model.ds, (20:.1:30))
+    predictions = AutoGP.predict(model, ds_query; quantiles=[0.025, 0.975])
+    
+    axs[step].scatter(model.ds, model.y, marker=&quot;o&quot;, color=&quot;k&quot;, s=10, label=&quot;Observed Data&quot;)    
+    axs[step].axvline(model.ds[end], color=&quot;red&quot;, linestyle=&quot;--&quot;)
+    axs[step].plot(predictions[!,:ds], predictions[!,:y_mean], linewidth=1, color=&quot;k&quot;)
+    axs[step].fill_between(
+        predictions[!,:ds],
+        predictions[!,&quot;y_0.025&quot;],
+        predictions[!,&quot;y_0.975&quot;],
+        color=&quot;tab:green&quot;,
+        alpha=.25)
+
+    io = IOBuffer()
+    cov = AutoGP.covariance_kernels(model)[1]
+    Base.show(io, MIME(&quot;text/plain&quot;), cov)
+    cov_str = String(take!(io))
+    axs[step].set_title(&quot;Step $(step)\nAIC:$(aic)\n$(cov_str)&quot;, ha=&quot;left&quot;)
+end</code></pre><pre><code class="nohighlight hljs">fn_callback (generic function with 1 method)</code></pre><p>The plots below show a key shortcoming of greedy search.  Whereas steps 3–8 contain a sensible covariance structure, at steps 9–10 the structure becomes worse.  This behavior is a result of greedy search selecting covariance structures with the smallest AIC, which is a rough heuristic to an ideal scoring function based on the <a href="https://en.wikipedia.org/wiki/Marginal_likelihood">marginal likelihood</a> of the data under each structure, integrating out the parameter.  Since AIC is based on maximum likelihood estimation and the likelihood of parameters is highly multimodal for structures such as <a href="../gp.html#AutoGP.GP.Periodic"><code>AutoGP.GP.Periodic</code></a>, greedy search may result in brittle and unpredictable behavior.</p><pre><code class="language-julia hljs">AutoGP.fit_greedy!(model; max_depth=10, callback_fn=fn_callback);
+fig</code></pre><p><img src="greedy_mcmc_files/greedy_mcmc_11_0.png" alt="png"/></p><pre><code class="nohighlight hljs">sys:1: UserWarning: Glyph 65291 (\N{FULLWIDTH PLUS SIGN}) missing from current font.</code></pre><h2 id="MCMC"><a class="docs-heading-anchor" href="#MCMC">MCMC</a><a id="MCMC-1"></a><a class="docs-heading-anchor-permalink" href="#MCMC" title="Permalink"></a></h2><p>Markov chain Monte Carlo sampling is another structure learning method. Let us initialize a <code>GPModel</code> with 2 particles.</p><pre><code class="language-julia hljs">model = AutoGP.GPModel(ds, y; n_particles=2);</code></pre><pre><code class="language-julia hljs">figures = []
+function fn_callback(; kwargs...)
+    model = kwargs[:model]
+    step = kwargs[:step]
+    elapsed = kwargs[:elapsed]
+
+    ds_query = vcat(model.ds, (20:.1:100))
+    predictions = AutoGP.predict(model, ds_query; quantiles=[0.025, 0.975])
+    
+    fig, axis = plt.subplots(ncols=2, figsize=(18, 6), dpi=200)
+    for (i, ax) in enumerate(axis)
+        subdf = predictions[predictions.particle.==i,:]
+        ax.scatter(model.ds, model.y, marker=&quot;o&quot;, color=&quot;k&quot;, s=10, label=&quot;Observed Data&quot;)    
+        ax.axvline(model.ds[end], color=&quot;red&quot;, linestyle=&quot;--&quot;)
+        ax.plot(subdf[!,:ds], subdf[!,:y_mean], linewidth=1, color=&quot;k&quot;)
+        ax.fill_between(
+            subdf[!,:ds],
+            subdf[!,&quot;y_0.025&quot;],
+            subdf[!,&quot;y_0.975&quot;],
+            color=&quot;tab:green&quot;,
+            alpha=.25)
+
+        io = IOBuffer()
+        cov = AutoGP.covariance_kernels(model)[i]
+        Base.show(io, MIME(&quot;text/plain&quot;), cov)
+        cov_str = String(take!(io))
+        ax.set_title(&quot;Step $(step)\nElapsed $(elapsed[i])\n$(cov_str)&quot;, ha=&quot;left&quot;)
+    end
+    push!(figures, fig)
+    plt.close(fig)
+end</code></pre><pre><code class="nohighlight hljs">fn_callback (generic function with 1 method)</code></pre><pre><code class="language-julia hljs">AutoGP.fit_mcmc!(model; n_mcmc=45, n_hmc=10, callback_fn=fn_callback)</code></pre><p>Let&#39;s now show some plots that were collected by the callback during MCMC inference. The final plot shows an interesting example of how MCMC learning can reflect posterior uncertainty over the covariance structure.</p><pre><code class="language-julia hljs">display(figures[1])
+display(figures[10])
+display(figures[end])</code></pre><p><img src="greedy_mcmc_files/greedy_mcmc_18_0.png" alt="png"/></p><p><img src="greedy_mcmc_files/greedy_mcmc_18_1.png" alt="png"/></p><p><img src="greedy_mcmc_files/greedy_mcmc_18_2.png" alt="png"/></p><h3 id="MCMC-vs-SMC"><a class="docs-heading-anchor" href="#MCMC-vs-SMC">MCMC vs SMC</a><a id="MCMC-vs-SMC-1"></a><a class="docs-heading-anchor-permalink" href="#MCMC-vs-SMC" title="Permalink"></a></h3><p>MCMC sampling using <a href="../api.html#AutoGP.fit_mcmc!"><code>AutoGP.fit_mcmc!</code></a> invokes the same transition kernels over structure and parameters as those used in particle rejuvenation step of <a href="../api.html#AutoGP.fit_smc!"><code>AutoGP.fit_smc!</code></a>.  The main difference is that <a href="../api.html#AutoGP.fit_smc!"><code>AutoGP.fit_smc!</code></a> anneals the posterior over subsets of data at each step, whereas <a href="../api.html#AutoGP.fit_mcmc!"><code>AutoGP.fit_mcmc!</code></a> uses the full data at each step.</p><p>The benefits of SMC include</p><ol><li>Runtime efficiency in cases where the structure can be quickly inferred using a subset of the data; whereas MCMC always conditions on the full data at each step yielding more expensive likelihood evaluations.</li><li>Principled online inference, by using <a href="../api.html#AutoGP.add_data!"><code>AutoGP.add_data!</code></a>; whereas MCMC is an offline method.</li><li>Particle resampling, by using <a href="../api.html#AutoGP.maybe_resample!"><code>AutoGP.maybe_resample!</code></a>, to redirect computational effort to more promising structures and parameters; whereas MCMC iterates independent particles (i.e., chains).</li><li>The availability of unbiased marginal likelihood estimates (via <a href="../api.html#AutoGP.log_marginal_likelihood_estimate"><code>AutoGP.log_marginal_likelihood_estimate</code></a>; whereas the marginal likelihood estimate obtained from MCMC is essentially importance sampling the posterior using the prior as a proposal.</li></ol></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="decomposition.html">« Time Series Decomposition</a><a class="docs-footer-nextpage" href="../api.html">AutoGP API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Sunday 19 January 2025 22:16">Sunday 19 January 2025</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
