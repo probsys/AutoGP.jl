@@ -145,9 +145,9 @@ function run_smc_anneal_data(
         xs::Vector{Float64};
         config::GPConfig=GPConfig(),
         biased::Bool=false,
-        n_particles::Int=4,
-        n_mcmc::Int=10,
-        n_hmc::Int=10,
+        n_particles::Integer=4,
+        n_mcmc::Union{Integer,Vector{<:Integer}}=10,
+        n_hmc::Union{Integer,Vector{<:Integer}}=10,
         hmc_config=Dict(),
         permutation::Vector{<:Integer}=collect(1:length(ts)),
         schedule::Vector{<:Integer}=range(1:length(ts)),
@@ -169,6 +169,12 @@ function run_smc_anneal_data(
     @assert 1 <= schedule[1]
     @assert schedule[end] == length(ts)
     @assert all((schedule[2:end] .- schedule[1:end-1]) .> 0)
+
+    # Obtain n_mcmc and n_hmc.
+    isa(n_mcmc, Integer) && begin n_mcmc = repeat([n_mcmc], length(schedule)) end
+    isa(n_hmc, Integer) && begin n_hmc = repeat([n_hmc], length(schedule)) end
+    @assert length(n_mcmc) == length(schedule)
+    @assert length(n_hmc) == length(schedule)
 
     # Initialize SMC particles from prior.
     @timeit elapsed begin
@@ -197,7 +203,7 @@ function run_smc_anneal_data(
         verbose=verbose)
 
     # Run inference.
-    for step in schedule
+    for (i, step) in enumerate(schedule)
         verbose && println("Running SMC round $(step)/$(schedule[end])")
 
         @timeit elapsed begin
@@ -231,13 +237,18 @@ function run_smc_anneal_data(
             rejuvenated = false
             if !adaptive_rejuvenation || resampled
                 rejuvenated = true
-                Threads.@threads for i=1:n_particles
-                    local trace = state.traces[i]
+                Threads.@threads for p=1:n_particles
+                    local trace = state.traces[p]
                     trace, = rejuvenate_particle_structure(
-                        trace, n_mcmc, n_hmc, biased;
-                        hmc_config=hmc_config, verbose=verbose, check=check,
+                        trace,
+                        n_mcmc[i],
+                        n_hmc[i],
+                        biased;
+                        hmc_config=hmc_config,
+                        verbose=verbose,
+                        check=check,
                         observations=observations)
-                    state.traces[i] = trace
+                    state.traces[p] = trace
                 end
             end
 

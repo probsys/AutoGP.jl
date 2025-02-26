@@ -171,8 +171,8 @@ the observed data. Inference is performed using sequential Monte Carlo.
 # Arguments
 - `model::GPModel`: Instance of the `GPModel` to use.
 - `schedule::Vector{<:Integer}`: Schedule for incorporating data for SMC, refer to [`Schedule`](@ref).
-- `n_mcmc::Int`: Number of involutive MCMC rejuvenation steps.
-- `n_hmc::Int`: Number of HMC steps per accepted involutive MCMC step.
+- `n_mcmc::Union{Integer,Vector{<:Integer}}`: Number of involutive MCMC rejuvenation steps. If vector, must have same length as `schedule`.
+- `n_hmc::Union{Integer,Vector{<:Integer}}`: Number of HMC steps per accepted involutive MCMC step. If vector, must have same length as `schedule`.
 - `biased::Bool`:   Whether to bias the proposal to produce "short" structures.
 - `shuffle::Bool=true`: Whether to shuffle indexes `ds` or incorporate data in the given order.
 - `adaptive_resampling::Bool=true`: If `true` resamples based on ESS threshold, else at each step.
@@ -191,8 +191,8 @@ the observed data. Inference is performed using sequential Monte Carlo.
 function fit_smc!(
         model::GPModel;
         schedule::Vector{<:Integer},
-        n_mcmc::Int,
-        n_hmc::Int,
+        n_mcmc::Union{Integer,Vector{<:Integer}},
+        n_hmc::Union{Integer,Vector{<:Integer}},
         biased::Bool=false,
         shuffle::Bool=true,
         adaptive_resampling::Bool=true,
