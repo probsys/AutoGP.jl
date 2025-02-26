@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import DataFrames
-import Dates
 import Distributions
 import Random
 
 import Gen
 
+using Dates
 using Match
 
 using Distributions: MixtureModel
@@ -35,17 +35,18 @@ function seed!(seed)
 end
 
 """
-    IndexType = Union{Vector{<:Real}, Vector{<:Dates.TimeType}}
+    IndexType = Union{Vector{<:Real}, Vector{<:Date}, Vector{<:DateTime}}
 
 Permitted Julia types for Gaussian process time points.
-`Real` numbers are ingested directly, treated as time points..
-Instances of `Dates.TimeType` are converted to numeric time points by using
+`Real` numbers are ingested directly, treated as time points.
+Instances of the `Dates` types are converted to numeric time points by using
 [`Dates.datetime2unix`](https://docs.julialang.org/en/v1/stdlib/Dates/#Dates.datetime2unix).
 """
-const IndexType = Union{Vector{<:Real}, Vector{<:Dates.TimeType}}
+const IndexType = Union{Vector{<:Real}, Vector{<:Date}, Vector{<:DateTime}}
 
-to_numeric(t::Vector{<:Dates.AbstractTime}) = @. Dates.datetime2unix(Dates.DateTime(t))
-to_numeric(t::Vector{<:Real}) = t
+to_numeric(t::DateTime) = datetime2unix(t)
+to_numeric(t::Date) = to_numeric(DateTime(t))
+to_numeric(t::Real) = t
 
 """
     struct GPModel
@@ -92,10 +93,10 @@ function GPModel(
         n_particles::Integer=Threads.nthreads(),
         config::GP.GPConfig=GP.GPConfig())
     # Save the transformations.
-    ds_transform = Transforms.LinearTransform(to_numeric(ds), 0, 1)
+    ds_transform = Transforms.LinearTransform(to_numeric.(ds), 0, 1)
     y_transform = Transforms.LinearTransform(Vector{Float64}(y), 1)
     # Transform the data.
-    ds_numeric = Transforms.apply(ds_transform, to_numeric(ds))
+    ds_numeric = Transforms.apply(ds_transform, to_numeric.(ds))
     y_numeric = Transforms.apply(y_transform, y)
     # Initialize the particle filter.
     observations = Gen.choicemap((:xs, y_numeric))
@@ -105,7 +106,7 @@ function GPModel(
     pf_state = Gen.initialize_particle_filter(
         Model.model, (ds_numeric, config), observations, n_particles)
     # Return the state.
-    return GPModel(pf_state, config, ds, y, ds_transform, y_transform)
+    return GPModel(pf_state, config, collect(ds), collect(y), ds_transform, y_transform)
 end
 
 """
@@ -205,7 +206,7 @@ function fit_smc!(
     end
     # Obtain observed data.
     n = length(model.ds)
-    ds_numeric = Transforms.apply(model.ds_transform, to_numeric(model.ds))
+    ds_numeric = Transforms.apply(model.ds_transform, to_numeric.(model.ds))
     y_numeric = Transforms.apply(model.y_transform, model.y)
     permutation = shuffle ? Random.randperm(n) : collect(1:n)
     # Run SMC.
@@ -313,7 +314,7 @@ function fit_greedy!(
     !model.config.changepoints || error("AutoGP.fit_greedy! does not support changepoint operators.")
     (1 <= max_depth <= (model.config.max_depth == -1 ? Inf : model.config.max_depth)) || error("AutoGP.fit_greedy! requires positive and finite max_depth.")
     # Prepare observations.
-    ds_numeric = Transforms.apply(model.ds_transform, to_numeric(model.ds))
+    ds_numeric = Transforms.apply(model.ds_transform, to_numeric.(model.ds))
     y_numeric = Transforms.apply(model.y_transform, model.y)
     # Helper function for creating intermediate models for callback.
     make_greedy_submodel = (trace) -> begin
@@ -409,7 +410,7 @@ function add_data!(model::GPModel, ds::IndexType, y::Vector{<:Real})
     append!(model.ds, ds)
     append!(model.y, y)
     # Convert to numeric.
-    ds_numeric = Transforms.apply(model.ds_transform, to_numeric(model.ds))
+    ds_numeric = Transforms.apply(model.ds_transform, to_numeric.(model.ds))
     y_numeric = Transforms.apply(model.y_transform, model.y)
     # Prepare observations.
     observations = Gen.choicemap((:xs, y_numeric))
@@ -452,7 +453,7 @@ function predict_mvn(
     if !(eltype(ds) <: eltype(model.ds))
         error("Invalid time $(ds), expected $(eltype(model.ds))")
     end
-    ds_numeric = Transforms.apply(model.ds_transform, to_numeric(ds))
+    ds_numeric = Transforms.apply(model.ds_transform, to_numeric.(ds))
     n_particles = num_particles(model)
     weights = particle_weights(model)
     distributions = Vector{MvNormal}(undef, n_particles)
@@ -584,7 +585,7 @@ function predict(
     if !(eltype(ds) <: eltype(model.ds))
         error("Invalid time $(ds), expected $(eltype(model.ds))")
     end
-    ds_numeric = Transforms.apply(model.ds_transform, to_numeric(ds))
+    ds_numeric = Transforms.apply(model.ds_transform, to_numeric.(ds))
     weights = particle_weights(model)
     n_particles = num_particles(model)
     frames = Vector(undef, n_particles)
