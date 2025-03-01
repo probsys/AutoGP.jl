@@ -612,7 +612,7 @@ function predict(
     weights = particle_weights(model)
     n_particles = num_particles(model)
     frames = Vector(undef, n_particles)
-    for i=1:n_particles
+    Threads.@threads for i=1:n_particles
         y_mean, y_bounds = Inference.predict(
             model.pf_state.traces[i], ds_numeric;
             quantiles=quantiles, noise_pred=noise_pred)
