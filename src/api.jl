@@ -420,6 +420,29 @@ function add_data!(model::GPModel, ds::IndexType, y::Vector{<:Real})
 end
 
 """
+    remove_data!(model::GPModel, ds::IndexType, y::Vector{<:Real})
+Remove existing observations `ds` from `model`.
+"""
+function remove_data!(model::GPModel, ds::IndexType)
+    # Find the data point.
+    indexes = findall(x->x in ds, model.ds)
+    if length(indexes) == 0
+        error("No such time points $(ds).")
+    end
+    # Append the data.
+    deleteat!(model.ds, indexes)
+    deleteat!(model.y, indexes)
+    # Convert to numeric.
+    ds_numeric = Transforms.apply(model.ds_transform, to_numeric.(model.ds))
+    y_numeric = Transforms.apply(model.y_transform, model.y)
+    # Prepare observations.
+    observations = Gen.choicemap((:xs, y_numeric))
+    !isnothing(model.config.noise) && (observations[:noise] = trace[:noise])
+    # Run SMC step.
+    Inference.smc_step!(model.pf_state, (ds_numeric, model.config), observations)
+end
+
+"""
     maybe_resample!(model::GPModel, ess_threshold::Real)
 Resample the particle collection in `model` if ESS is below `ess_threshold`.
 Setting `ess_threshold = AutoGP.num_particles(model) + 1` will ensure
