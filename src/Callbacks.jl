@@ -115,11 +115,11 @@ function make_smc_callback(fn::Function, model::AutoGP.GPModel; kwargs...)
         ds_permuted = model.ds[permutation]
         y_permuted = model.y[permutation]
 
-        # Remaining data.
+        # Observed data.
         ds_obs = ds_permuted[1:step]
         y_obs = y_permuted[1:step]
 
-        # Future data.
+        # Remaining data.
         ds_next = ds_permuted[step+1:end]
         y_next = y_permuted[step+1:end]
 

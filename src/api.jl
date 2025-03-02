@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import DataFrames
-import Dates
 import Distributions
 import Random
 
 import Gen
 
+using Dates
 using Match
 
 using Distributions: MixtureModel
@@ -35,17 +35,18 @@ function seed!(seed)
 end
 
 """
-    IndexType = Union{Vector{<:Real}, Vector{<:Dates.TimeType}}
+    IndexType = Union{Vector{<:Real}, Vector{<:Date}, Vector{<:DateTime}}
 
 Permitted Julia types for Gaussian process time points.
-`Real` numbers are ingested directly, treated as time points..
-Instances of `Dates.TimeType` are converted to numeric time points by using
+`Real` numbers are ingested directly, treated as time points.
+Instances of the `Dates` types are converted to numeric time points by using
 [`Dates.datetime2unix`](https://docs.julialang.org/en/v1/stdlib/Dates/#Dates.datetime2unix).
 """
-const IndexType = Union{Vector{<:Real}, Vector{<:Dates.TimeType}}
+const IndexType = Union{Vector{<:Real}, Vector{<:Date}, Vector{<:DateTime}}
 
-to_numeric(t::Vector{<:Dates.AbstractTime}) = @. Dates.datetime2unix(Dates.DateTime(t))
-to_numeric(t::Vector{<:Real}) = t
+to_numeric(t::DateTime) = datetime2unix(t)
+to_numeric(t::Date) = to_numeric(DateTime(t))
+to_numeric(t::Real) = t
 
 """
     struct GPModel
@@ -92,10 +93,10 @@ function GPModel(
         n_particles::Integer=Threads.nthreads(),
         config::GP.GPConfig=GP.GPConfig())
     # Save the transformations.
-    ds_transform = Transforms.LinearTransform(to_numeric(ds), 0, 1)
+    ds_transform = Transforms.LinearTransform(to_numeric.(ds), 0, 1)
     y_transform = Transforms.LinearTransform(Vector{Float64}(y), 1)
     # Transform the data.
-    ds_numeric = Transforms.apply(ds_transform, to_numeric(ds))
+    ds_numeric = Transforms.apply(ds_transform, to_numeric.(ds))
     y_numeric = Transforms.apply(y_transform, y)
     # Initialize the particle filter.
     observations = Gen.choicemap((:xs, y_numeric))
@@ -105,7 +106,7 @@ function GPModel(
     pf_state = Gen.initialize_particle_filter(
         Model.model, (ds_numeric, config), observations, n_particles)
     # Return the state.
-    return GPModel(pf_state, config, ds, y, ds_transform, y_transform)
+    return GPModel(pf_state, config, collect(ds), collect(y), ds_transform, y_transform)
 end
 
 """
@@ -170,8 +171,8 @@ the observed data. Inference is performed using sequential Monte Carlo.
 # Arguments
 - `model::GPModel`: Instance of the `GPModel` to use.
 - `schedule::Vector{<:Integer}`: Schedule for incorporating data for SMC, refer to [`Schedule`](@ref).
-- `n_mcmc::Int`: Number of involutive MCMC rejuvenation steps.
-- `n_hmc::Int`: Number of HMC steps per accepted involutive MCMC step.
+- `n_mcmc::Union{Integer,Vector{<:Integer}}`: Number of involutive MCMC rejuvenation steps. If vector, must have same length as `schedule`.
+- `n_hmc::Union{Integer,Vector{<:Integer}}`: Number of HMC steps per accepted involutive MCMC step. If vector, must have same length as `schedule`.
 - `biased::Bool`:   Whether to bias the proposal to produce "short" structures.
 - `shuffle::Bool=true`: Whether to shuffle indexes `ds` or incorporate data in the given order.
 - `adaptive_resampling::Bool=true`: If `true` resamples based on ESS threshold, else at each step.
@@ -190,8 +191,8 @@ the observed data. Inference is performed using sequential Monte Carlo.
 function fit_smc!(
         model::GPModel;
         schedule::Vector{<:Integer},
-        n_mcmc::Int,
-        n_hmc::Int,
+        n_mcmc::Union{Integer,Vector{<:Integer}},
+        n_hmc::Union{Integer,Vector{<:Integer}},
         biased::Bool=false,
         shuffle::Bool=true,
         adaptive_resampling::Bool=true,
@@ -205,7 +206,7 @@ function fit_smc!(
     end
     # Obtain observed data.
     n = length(model.ds)
-    ds_numeric = Transforms.apply(model.ds_transform, to_numeric(model.ds))
+    ds_numeric = Transforms.apply(model.ds_transform, to_numeric.(model.ds))
     y_numeric = Transforms.apply(model.y_transform, model.y)
     permutation = shuffle ? Random.randperm(n) : collect(1:n)
     # Run SMC.
@@ -313,7 +314,7 @@ function fit_greedy!(
     !model.config.changepoints || error("AutoGP.fit_greedy! does not support changepoint operators.")
     (1 <= max_depth <= (model.config.max_depth == -1 ? Inf : model.config.max_depth)) || error("AutoGP.fit_greedy! requires positive and finite max_depth.")
     # Prepare observations.
-    ds_numeric = Transforms.apply(model.ds_transform, to_numeric(model.ds))
+    ds_numeric = Transforms.apply(model.ds_transform, to_numeric.(model.ds))
     y_numeric = Transforms.apply(model.y_transform, model.y)
     # Helper function for creating intermediate models for callback.
     make_greedy_submodel = (trace) -> begin
@@ -409,7 +410,30 @@ function add_data!(model::GPModel, ds::IndexType, y::Vector{<:Real})
     append!(model.ds, ds)
     append!(model.y, y)
     # Convert to numeric.
-    ds_numeric = Transforms.apply(model.ds_transform, to_numeric(model.ds))
+    ds_numeric = Transforms.apply(model.ds_transform, to_numeric.(model.ds))
+    y_numeric = Transforms.apply(model.y_transform, model.y)
+    # Prepare observations.
+    observations = Gen.choicemap((:xs, y_numeric))
+    !isnothing(model.config.noise) && (observations[:noise] = trace[:noise])
+    # Run SMC step.
+    Inference.smc_step!(model.pf_state, (ds_numeric, model.config), observations)
+end
+
+"""
+    remove_data!(model::GPModel, ds::IndexType, y::Vector{<:Real})
+Remove existing observations `ds` from `model`.
+"""
+function remove_data!(model::GPModel, ds::IndexType)
+    # Find the data point.
+    indexes = findall(x->x in ds, model.ds)
+    if length(indexes) == 0
+        error("No such time points $(ds).")
+    end
+    # Append the data.
+    deleteat!(model.ds, indexes)
+    deleteat!(model.y, indexes)
+    # Convert to numeric.
+    ds_numeric = Transforms.apply(model.ds_transform, to_numeric.(model.ds))
     y_numeric = Transforms.apply(model.y_transform, model.y)
     # Prepare observations.
     observations = Gen.choicemap((:xs, y_numeric))
@@ -452,7 +476,7 @@ function predict_mvn(
     if !(eltype(ds) <: eltype(model.ds))
         error("Invalid time $(ds), expected $(eltype(model.ds))")
     end
-    ds_numeric = Transforms.apply(model.ds_transform, to_numeric(ds))
+    ds_numeric = Transforms.apply(model.ds_transform, to_numeric.(ds))
     n_particles = num_particles(model)
     weights = particle_weights(model)
     distributions = Vector{MvNormal}(undef, n_particles)
@@ -584,11 +608,11 @@ function predict(
     if !(eltype(ds) <: eltype(model.ds))
         error("Invalid time $(ds), expected $(eltype(model.ds))")
     end
-    ds_numeric = Transforms.apply(model.ds_transform, to_numeric(ds))
+    ds_numeric = Transforms.apply(model.ds_transform, to_numeric.(ds))
     weights = particle_weights(model)
     n_particles = num_particles(model)
     frames = Vector(undef, n_particles)
-    for i=1:n_particles
+    Threads.@threads for i=1:n_particles
         y_mean, y_bounds = Inference.predict(
             model.pf_state.traces[i], ds_numeric;
             quantiles=quantiles, noise_pred=noise_pred)
