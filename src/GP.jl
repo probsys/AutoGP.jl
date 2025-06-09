@@ -611,6 +611,8 @@ an instance of [`Node`](@ref). The main `kwargs` (all optional) are:
     max_depth::Integer = -1
     # Enable ChangePoints.
     changepoints::Bool = true
+    # Require ChangePoints to be children of ChangePoints only (experimental).
+    changepoints_at_root::Bool = false
     # Observation noise level.
     noise::Union{Nothing,Float64} = nothing
 end

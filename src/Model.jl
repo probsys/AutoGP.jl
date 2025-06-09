@@ -80,7 +80,8 @@ end
     elseif node_type in [config.Plus, config.Times]
         idx_l = Gen.get_child(idx, 1, config.max_branch)
         idx_r = Gen.get_child(idx, 2, config.max_branch)
-        config = GPConfig(config; changepoints=false)
+        config = GPConfig(config;
+            changepoints=config.changepoints && (!config.changepoints_at_root))
         left_node = {*} ~ covariance_prior(idx_l, config)
         right_node = {*} ~ covariance_prior(idx_r, config)
         NodeType = config.index_to_node[node_type]
@@ -89,9 +90,12 @@ end
     # ChangePoint
     elseif node_type == config.ChangePoint
         # @assert config.changepoints
-        # It is impossible to be here if the assertion is false,
-        # but we should allow such traces to have probability zero
-        # (for inference) rather than force an assertion error.
+        # It should be impossible to be here if the assertion is false,
+        # but we allow such traces to have probability zero
+        # (during inference) rather than raise an assertion error.
+        #
+        # TODO: Document why inference will propose a ChangePoint even
+        # if config.changepoints is false.
         location = {(idx, :location)} ~ normal(0, 1)
         param = transform_param(:location, location)
         child1 = Gen.get_child(idx, 1, config.max_branch)
