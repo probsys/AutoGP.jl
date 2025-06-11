@@ -140,5 +140,5 @@ AutoGP.effective_sample_size
 AutoGP.covariance_kernels
 AutoGP.observation_noise_variances
 AutoGP.decompose
-AutoGP.erase_kernel
+AutoGP.extract_kernel
 ```
