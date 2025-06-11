@@ -693,6 +693,10 @@ The weights of `models[i]` are arbitrary and have no meaningful value.
 
 This function is particularly useful for visualizing the individual time
 series structures that make up each particle of `model`.
+
+# See also
+
+[Time Series Decomposition Tutorial](./tutorials/decomposition.html).
 """
 function decompose(model::GPModel)
     kernels = covariance_kernels(model)
@@ -725,4 +729,38 @@ function decompose(model::GPModel)
         models[i].pf_state.log_weights = zeros(length(models[i].pf_state.traces))
     end
     return models
+end
+
+
+"""
+    erase_kernel(model::GPModel, ::Type{T}) where T <: GP.LeafNode
+
+Remove all base kernels of type `T <: `[`GP.LeafNode`](@ref) from each
+particle, while retaining the others. A new [`GPModel`](@ref) instance is
+returned. If all the constituent kernels in a given particle have type
+`T` then it is replaced with a [`GP.Linear`](@ref)`(0,0,0)` kernel, i.e.,
+a constant zero function.
+
+If `keep=true`, then the behavior is flipped: base kernels of type `T` are
+retained while the other base kernels are erased.
+"""
+function erase_kernel(model::GPModel, t::Type{T}; keep::Bool=false) where T <: GP.LeafNode
+    kernels = covariance_kernels(model)
+    new_kernels = [GP.erase_kernel(kernel, t; keep=keep) for kernel in kernels]
+    new_model = GPModel(
+            model.ds, model.y;
+            n_particles=num_particles(model),
+            config=model.config)
+    # Copy transforms, since add_data! may have been called on model.
+    new_model.ds_transform = model.ds_transform
+    new_model.y_transform = model.y_transform
+    # Force update each particle to match the kernel fragment.
+    for (i, trace) in enumerate(new_model.pf_state.traces)
+        new_model.pf_state.traces[i] =
+            Inference.node_to_trace(
+                new_kernels[i], model.pf_state.traces[i])
+    end
+    # Force update the weights.
+    new_model.pf_state.log_weights = model.pf_state.log_weights
+    return new_model
 end

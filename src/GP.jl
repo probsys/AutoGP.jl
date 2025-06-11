@@ -398,6 +398,72 @@ function eval_cov(node::ChangePoint, ts::Vector{Float64})
     return Matrix(LinearAlgebra.Symmetric(K))
 end
 
+@doc raw"""
+    Empty()
+
+A sentinel base covariance kernel.
+
+It is an error to evaluate the covariance of an Empty() base kernel.
+"""
+struct Empty <: LeafNode end
+Base.:+(::Empty, ::Empty) = Empty()
+Base.:+(a::Node, ::Empty) = a
+Base.:+(::Empty, b::Node) = b
+
+Base.:*(::Empty, b::Empty) = Empty()
+Base.:*(a::Node, ::Empty) = a
+Base.:*(::Empty, b::Node) = b
+
+# Helper function for erase_kernel.
+function replace_kernel end
+
+function replace_kernel(node::T, ::Type{T}, keep::Bool) where T<:LeafNode
+    return !keep ? Empty() : node
+end
+
+function replace_kernel(node::LeafNode, ::Type{T}, keep::Bool) where T<:LeafNode
+    return !keep ? node : Empty()
+end
+
+function replace_kernel(node::Times, t::Type{T}, keep::Bool) where T<:LeafNode
+    l = replace_kernel(node.left, t, keep)
+    r = replace_kernel(node.right, t, keep)
+    return l * r
+end
+
+function replace_kernel(node::Plus, t::Type{T}, keep::Bool) where T<:LeafNode
+    l = replace_kernel(node.left, t, keep)
+    r = replace_kernel(node.right, t, keep)
+    return l + r
+end
+
+function replace_kernel(node::ChangePoint, t::Type{T}, keep::Bool) where T<:LeafNode
+    # ChangePoint should always be maintained in the skeleton.
+    get_cp_kernel(k) = begin
+        kk = replace_kernel(k, t, keep)
+        return kk === Empty() ? Constant(0) : kk
+    end
+    l = get_cp_kernel(node.left)
+    r = get_cp_kernel(node.right)
+    return ChangePoint(l, r, node.location, node.scale)
+end
+
+@doc raw"""
+    erase_kernel(node::Node, ::Type{T}; keep::Bool=false) where T<:LeafNode
+
+Replace all base kernels in `node` of type `T <: LeafNode` with the
+[`Empty`](@ref) kernel, and reduce the result to eliminate `Empty()` where
+possible. If all base kernels in `node` are of type `T`, the return value
+is constant 0 function.
+
+If `keep=true` then the base kernels of type `T` are kept while the others
+are erased.
+"""
+function erase_kernel(node::Node, t::Type{T}; keep::Bool=false) where T<:LeafNode
+    k = replace_kernel(node, t, keep)
+    return (k === Empty()) ? Constant(0) : k
+end
+
 """
     compute_cov_matrix_vectorized(node::Node, noise, ts)
 Compute covariance matrix by evaluating `node` on all pair of `ts`.
@@ -508,7 +574,8 @@ pretty(node::GammaExponential) = @sprintf("GE(%1.2f, %1.2f; %1.2f)", node.length
 pretty(node::Periodic) = @sprintf("PER(%1.2f, %1.2f; %1.2f)", node.lengthscale, node.period, node.amplitude)
 pretty(node::Plus) = "($(pretty(node.left)) + $(pretty(node.right)))"
 pretty(node::Times) = "($(pretty(node.left)) * $(pretty(node.right)))"
-pretty(node::ChangePoint) = "CP($(pretty(node.left)), $(pretty(node.right)), $(node.location), $(node.scale))"
+pretty(node::ChangePoint) = "CP($(pretty(node.left)), $(pretty(node.right)), " * @sprintf("%1.2f, %1.2e)", node.location, node.scale)
+pretty(node::Empty) = "EMPTY()"
 
 function _make_indent_strings(pre, vert_bars, first, last)
     first && return ("", "")
@@ -539,7 +606,7 @@ end
 
 _pretty_BinaryOpNode(node::Plus) = '+'
 _pretty_BinaryOpNode(node::Times) = '\u00D7'
-_pretty_BinaryOpNode(node::ChangePoint) = ("CP$((node.location,node.scale))")
+_pretty_BinaryOpNode(node::ChangePoint) = @sprintf("CP(%1.2f, %1.2e)", node.location, node.scale)
 function _show_pretty(io::IO, node::BinaryOpNode, pre, vert_bars::Tuple; first=false, last=true)
     indent_vert_str, indent_str = _make_indent_strings(pre, vert_bars, first, last)
     # print(io, indent_vert_str)
@@ -638,6 +705,9 @@ export Periodic
 export Times
 export Plus
 export ChangePoint
+
+export Empty
+export erase_kernel
 
 export GPConfig
 
