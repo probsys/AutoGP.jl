@@ -117,7 +117,7 @@ Constant covariance kernel.
 k(t,t') = \theta
 ```
 
-Draws from this kernel are horizontal lines, where ``\theta_1`` determines
+Draws from this kernel are horizontal lines, where ``\theta`` determines
 the variance of the constant value around the mean (typically zero).
 """
 struct Constant <: LeafNode
