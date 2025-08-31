@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Time Series Decomposition · AutoGP</title><meta name="title" content="Time Series Decomposition · AutoGP"/><meta property="og:title" content="Time Series Decomposition · AutoGP"/><meta property="twitter:title" content="Time Series Decomposition · AutoGP"/><meta name="description" content="Documentation for AutoGP."/><meta property="og:description" content="Documentation for AutoGP."/><meta property="twitter:description" content="Documentation for AutoGP."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../index.html"><img src="../assets/logo.svg" alt="AutoGP logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../index.html">AutoGP</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../index.html">Home</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="overview.html">Overview</a></li><li><a class="tocitem" href="iclaims.html">Insurance Claims</a></li><li><a class="tocitem" href="callbacks.html">Inspecting Online Inference</a></li><li class="is-active"><a class="tocitem" href="decomposition.html">Time Series Decomposition</a><ul class="internal"><li><a class="tocitem" href="#Loading-Data"><span>Loading Data</span></a></li><li><a class="tocitem" href="#Creating-an-AutoGP-Model"><span>Creating an AutoGP Model</span></a></li><li><a class="tocitem" href="#Model-Fitting-via-SMC"><span>Model Fitting via SMC</span></a></li><li><a class="tocitem" href="#Decomposing-into-Constituent-Kernels"><span>Decomposing into Constituent Kernels</span></a></li></ul></li><li><a class="tocitem" href="greedy_mcmc.html">Greedy Search and MCMC</a></li></ul></li><li><a class="tocitem" href="../api.html">AutoGP API</a></li><li><a class="tocitem" href="../gp.html">Gaussian Process Library</a></li><li><a class="tocitem" href="../utils.html">Utilities</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href="decomposition.html">Time Series Decomposition</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="decomposition.html">Time Series Decomposition</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/probsys/AutoGP.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/probsys/AutoGP.jl/blob/main/docs/src/tutorials/decomposition.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Time-Series-Decomposition"><a class="docs-heading-anchor" href="#Time-Series-Decomposition">Time Series Decomposition</a><a id="Time-Series-Decomposition-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Series-Decomposition" title="Permalink"></a></h1><p>This tutorial shows how to decompose AutoGP models into their constituent temporal components, to gain more insight into the learned time series structures.</p><p>The relevant method is <a href="../api.html#AutoGP.decompose"><code>AutoGP.decompose</code></a>.</p><pre><code class="language-julia hljs">import AutoGP</code></pre><pre><code class="language-julia hljs">import CSV
+import Dates
+import DataFrames
+import PyPlot</code></pre><h2 id="Loading-Data"><a class="docs-heading-anchor" href="#Loading-Data">Loading Data</a><a id="Loading-Data-1"></a><a class="docs-heading-anchor-permalink" href="#Loading-Data" title="Permalink"></a></h2><pre><code class="language-julia hljs">AutoGP.seed!(10)</code></pre><pre><code class="language-julia hljs">data = CSV.File(&quot;assets/M1266.csv&quot;)
+M3 = DataFrames.DataFrame(data);
+df = M3[:,[&quot;ds&quot;,&quot;y&quot;]];</code></pre><p>We next split the data into a training set and test set.</p><pre><code class="language-julia hljs">n_test = 18
+n_train = DataFrames.nrow(df) - n_test
+df_train = df[1:end-n_test, :]
+df_test = df[end-n_test+1:end, :]
+
+fig, ax = PyPlot.subplots(figsize=(10,4))
+ax.scatter(df_train.ds, df_train.y, marker=&quot;o&quot;, color=&quot;k&quot;, alpha=.5)
+ax.scatter(df_test.ds, df_test.y, marker=&quot;o&quot;, color=&quot;w&quot;, edgecolor=&quot;k&quot;, label=&quot;Test Data&quot;)</code></pre><p><img src="decomposition_files/decomposition_8_0.png" alt="png"/></p><pre><code class="nohighlight hljs">PyObject &lt;matplotlib.collections.PathCollection object at 0x778f98059a60&gt;</code></pre><h2 id="Creating-an-AutoGP-Model"><a class="docs-heading-anchor" href="#Creating-an-AutoGP-Model">Creating an AutoGP Model</a><a id="Creating-an-AutoGP-Model-1"></a><a class="docs-heading-anchor-permalink" href="#Creating-an-AutoGP-Model" title="Permalink"></a></h2><pre><code class="language-julia hljs">model = AutoGP.GPModel(df_train.ds, df_train.y; n_particles=18);</code></pre><pre><code class="language-julia hljs">ds_future = range(start=df.ds[end]+Dates.Month(1), step=Dates.Month(1), length=2*size(df_test)[1])
+ds_query = vcat(df_train.ds, df_test.ds, ds_future)
+forecasts = AutoGP.predict(model, ds_query; quantiles=[0.025, 0.975]);</code></pre><p>Let us visualize the forecasts before model fitting. The model clearly underfits the data.</p><pre><code class="language-julia hljs">fig, ax = PyPlot.subplots(figsize=(10,4))
+for i=1:AutoGP.num_particles(model)
+    subdf = forecasts[forecasts.particle.==i,:]
+    ax.plot(subdf[!,&quot;ds&quot;], subdf[!,&quot;y_mean&quot;], color=&quot;k&quot;, linewidth=.25)
+    ax.fill_between(subdf.ds, subdf[!,&quot;y_0.025&quot;], subdf[!,&quot;y_0.975&quot;], color=&quot;tab:blue&quot;, alpha=0.05)
+end
+ax.scatter(df_train.ds, df_train.y, marker=&quot;o&quot;, color=&quot;k&quot;)
+ax.scatter(df_test.ds, df_test.y, marker=&quot;o&quot;, color=&quot;w&quot;, edgecolor=&quot;k&quot;, label=&quot;Test Data&quot;)</code></pre><p><img src="decomposition_files/decomposition_13_0.png" alt="png"/></p><pre><code class="nohighlight hljs">PyObject &lt;matplotlib.collections.PathCollection object at 0x778f8f90a900&gt;</code></pre><h2 id="Model-Fitting-via-SMC"><a class="docs-heading-anchor" href="#Model-Fitting-via-SMC">Model Fitting via SMC</a><a id="Model-Fitting-via-SMC-1"></a><a class="docs-heading-anchor-permalink" href="#Model-Fitting-via-SMC" title="Permalink"></a></h2><pre><code class="language-julia hljs">AutoGP.fit_smc!(model; schedule=AutoGP.Schedule.linear_schedule(n_train, .025), n_mcmc=50, n_hmc=25, verbose=false);
+forecasts = AutoGP.predict(model, ds_query; quantiles=[0.025, 0.975]);</code></pre><pre><code class="language-julia hljs">fig, ax = PyPlot.subplots(figsize=(10,4))
+for i=1:AutoGP.num_particles(model)
+    subdf = forecasts[forecasts.particle.==i,:]
+    ax.plot(subdf[!,&quot;ds&quot;], subdf[!,&quot;y_mean&quot;], color=&quot;k&quot;, linewidth=.5)
+    ax.fill_between(
+        subdf.ds, subdf[!,&quot;y_0.025&quot;], subdf[!,&quot;y_0.975&quot;];
+        color=&quot;tab:blue&quot;, alpha=0.05)
+end
+ax.scatter(df_train.ds, df_train.y, marker=&quot;o&quot;, color=&quot;k&quot;, label=&quot;Observed Data&quot;)
+ax.scatter(df_test.ds, df_test.y, marker=&quot;o&quot;, color=&quot;w&quot;, edgecolor=&quot;k&quot;, label=&quot;Test Data&quot;)</code></pre><p><img src="decomposition_files/decomposition_16_0.png" alt="png"/></p><pre><code class="nohighlight hljs">PyObject &lt;matplotlib.collections.PathCollection object at 0x778f8d8175f0&gt;</code></pre><h2 id="Decomposing-into-Constituent-Kernels"><a class="docs-heading-anchor" href="#Decomposing-into-Constituent-Kernels">Decomposing into Constituent Kernels</a><a id="Decomposing-into-Constituent-Kernels-1"></a><a class="docs-heading-anchor-permalink" href="#Decomposing-into-Constituent-Kernels" title="Permalink"></a></h2><pre><code class="language-julia hljs">weights = AutoGP.particle_weights(model)
+kernels = AutoGP.covariance_kernels(model)
+for (i, (k, w)) in enumerate(zip(kernels, weights))
+    println(&quot;Model $(i), Weight $(w)&quot;)
+    display(k)
+end</code></pre><pre><code class="nohighlight hljs">Model 1, Weight 0.1047078523238027
+
+
+
+×
+├── LIN(0.14; 0.23, 0.05)
+└── +
+    ├── +
+    │   ├── ×
+    │   │   ├── ×
+    │   │   │   ├── LIN(0.18; 0.41, 0.11)
+    │   │   │   └── GE(0.16, 1.42; 0.07)
+    │   │   └── LIN(0.44; 0.12, 0.05)
+    │   └── +
+    │       ├── ×
+    │       │   ├── LIN(0.30; 0.20, 0.08)
+    │       │   └── PER(0.23, 0.31; 0.05)
+    │       └── LIN(0.26; 0.27, 0.23)
+    └── LIN(0.09; 0.11, 0.79)
+
+
+
+Model 2, Weight 0.0361298068161129
+
+
+
+×
+├── LIN(0.14; 0.23, 0.05)
+└── +
+    ├── ×
+    │   ├── ×
+    │   │   ├── +
+    │   │   │   ├── GE(0.49, 1.26; 0.18)
+    │   │   │   └── LIN(0.52; 0.15, 0.22)
+    │   │   └── LIN(0.74; 0.12, 0.17)
+    │   └── GE(0.62, 0.98; 0.05)
+    └── +
+        ├── ×
+        │   ├── LIN(0.89; 0.26, 0.10)
+        │   └── PER(0.23, 0.31; 0.05)
+        └── LIN(0.22; 0.14, 0.70)
+
+
+
+Model 3, Weight 0.06115923536154616
+
+
+
+×
+├── LIN(0.17; 0.29, 0.04)
+└── +
+    ├── +
+    │   ├── +
+    │   │   ├── +
+    │   │   │   ├── ×
+    │   │   │   │   ├── LIN(0.08; 0.32, 0.53)
+    │   │   │   │   └── LIN(0.60; 0.10, 0.13)
+    │   │   │   └── ×
+    │   │   │       ├── LIN(0.67; 0.03, 0.28)
+    │   │   │       └── GE(0.19, 1.76; 0.06)
+    │   │   └── +
+    │   │       ├── ×
+    │   │       │   ├── LIN(0.23; 0.20, 0.09)
+    │   │       │   └── PER(0.18, 0.31; 0.04)
+    │   │       └── LIN(1.02; 0.28, 0.33)
+    │   └── LIN(0.08; 0.13, 0.61)
+    └── LIN(0.11; 0.32, 0.24)
+
+
+
+Model 4, Weight 0.05765497451892912
+
+
+
+×
+├── LIN(0.17; 0.29, 0.04)
+└── +
+    ├── ×
+    │   ├── LIN(0.89; 0.01, 0.34)
+    │   └── ×
+    │       ├── GE(0.39, 1.69; 0.26)
+    │       └── LIN(0.08; 0.03, 0.30)
+    └── +
+        ├── ×
+        │   ├── LIN(0.23; 0.20, 0.09)
+        │   └── +
+        │       ├── PER(0.18, 0.31; 0.04)
+        │       └── ×
+        │           ├── LIN(0.10; 1.09, 0.18)
+        │           └── LIN(0.58; 0.04, 0.13)
+        └── +
+            ├── LIN(0.23; 0.12, 1.30)
+            └── LIN(0.44; 0.05, 0.23)
+
+
+
+Model 5, Weight 0.08412270828154682
+
+
+
+×
+├── LIN(0.14; 0.23, 0.05)
+└── +
+    ├── +
+    │   ├── GE(0.24, 1.60; 0.01)
+    │   └── ×
+    │       ├── LIN(0.30; 0.20, 0.08)
+    │       └── PER(0.23, 0.31; 0.05)
+    └── +
+        ├── LIN(0.11; 1.35, 0.26)
+        └── LIN(0.17; 0.19, 0.26)
+
+
+
+Model 6, Weight 0.0611062884120964
+
+
+
+×
+├── LIN(0.14; 0.23, 0.05)
+└── +
+    ├── +
+    │   ├── ×
+    │   │   ├── GE(0.43, 1.56; 0.09)
+    │   │   └── LIN(0.32; 0.25, 0.26)
+    │   └── +
+    │       ├── ×
+    │       │   ├── LIN(0.30; 0.20, 0.08)
+    │       │   └── PER(0.23, 0.31; 0.05)
+    │       └── LIN(0.11; 0.17, 0.57)
+    └── LIN(0.07; 0.06, 0.52)
+
+
+
+Model 7, Weight 0.05012538373480415
+
+
+
+×
+├── LIN(0.06; 0.30, 0.06)
+└── +
+    ├── GE(0.76, 1.85; 0.23)
+    └── ×
+        ├── LIN(0.32; 0.20, 0.08)
+        └── +
+            ├── LIN(0.28; 0.26, 0.15)
+            └── PER(0.29, 0.31; 0.07)
+
+
+
+Model 8, Weight 0.0008966800224218749
+
+
+
+×
+├── GE(2.06, 1.54; 0.08)
+└── +
+    ├── +
+    │   ├── LIN(0.58; 0.47, 0.45)
+    │   └── LIN(0.41; 0.86, 0.11)
+    └── PER(0.58, 0.21; 0.14)
+
+
+
+Model 9, Weight 0.04677692738637331
+
+
+
+×
+├── LIN(0.14; 0.23, 0.05)
+└── +
+    ├── +
+    │   ├── ×
+    │   │   ├── +
+    │   │   │   ├── GE(0.24, 1.60; 0.01)
+    │   │   │   └── LIN(0.23; 0.17, 0.67)
+    │   │   └── LIN(1.05; 0.16, 0.25)
+    │   └── ×
+    │       ├── LIN(0.30; 0.20, 0.08)
+    │       └── PER(0.23, 0.31; 0.05)
+    └── LIN(0.60; 0.37, 0.71)
+
+
+
+Model 10, Weight 0.07740537180316114
+
+
+
+×
+├── LIN(0.06; 0.30, 0.06)
+└── +
+    ├── PER(0.63, 3.27; 0.16)
+    └── +
+        ├── +
+        │   ├── ×
+        │   │   ├── LIN(0.32; 0.20, 0.08)
+        │   │   └── PER(0.29, 0.31; 0.07)
+        │   └── LIN(0.18; 0.13, 0.54)
+        └── LIN(0.11; 0.07, 0.05)
+
+
+
+Model 11, Weight 0.005994615555764634
+
+
+
+×
+├── LIN(0.12; 0.48, 0.13)
+└── +
+    ├── GE(1.04, 1.81; 0.24)
+    └── ×
+        ├── LIN(0.38; 0.18, 0.06)
+        └── PER(0.44, 0.21; 0.04)
+
+
+
+Model 12, Weight 0.06594317195255328
+
+
+
+×
+├── LIN(0.14; 0.23, 0.05)
+└── +
+    ├── +
+    │   ├── ×
+    │   │   ├── GE(0.99, 1.67; 0.11)
+    │   │   └── GE(0.55, 1.58; 0.06)
+    │   └── +
+    │       ├── ×
+    │       │   ├── LIN(0.30; 0.20, 0.08)
+    │       │   └── PER(0.23, 0.31; 0.05)
+    │       └── LIN(0.22; 0.14, 0.70)
+    └── LIN(0.37; 0.12, 0.10)
+
+
+
+Model 13, Weight 0.1091385252477062
+
+
+
+×
+├── LIN(0.06; 0.17, 0.04)
+└── +
+    ├── +
+    │   ├── GE(0.24, 1.60; 0.01)
+    │   └── ×
+    │       ├── LIN(2.24; 0.16, 0.06)
+    │       └── PER(0.23, 0.31; 0.05)
+    └── LIN(0.48; 0.26, 0.94)
+
+
+
+Model 14, Weight 0.06101996901340416
+
+
+
+×
+├── LIN(0.17; 0.31, 0.04)
+└── +
+    ├── +
+    │   ├── GE(1.42, 1.52; 0.03)
+    │   └── +
+    │       ├── +
+    │       │   ├── LIN(2.80; 0.26, 0.33)
+    │       │   └── LIN(0.08; 0.21, 0.16)
+    │       └── +
+    │           ├── ×
+    │           │   ├── LIN(0.21; 0.19, 0.08)
+    │           │   └── PER(0.19, 0.31; 0.03)
+    │           └── LIN(0.09; 0.23, 0.30)
+    └── LIN(0.10; 0.28, 0.46)
+
+
+
+Model 15, Weight 0.021780226716162084
+
+
+
+×
+├── LIN(0.17; 0.29, 0.04)
+└── +
+    ├── +
+    │   ├── ×
+    │   │   ├── LIN(0.44; 0.18, 0.61)
+    │   │   └── PER(0.92, 1.31; 0.13)
+    │   └── +
+    │       ├── ×
+    │       │   ├── LIN(0.61; 0.23, 0.10)
+    │       │   └── PER(0.18, 0.31; 0.04)
+    │       └── LIN(0.03; 0.29, 0.82)
+    └── LIN(0.17; 0.15, 0.02)
+
+
+
+Model 16, Weight 0.026089343061335483
+
+
+
+×
+├── LIN(1.19; 0.22, 0.14)
+└── +
+    ├── +
+    │   ├── LIN(0.49; 0.36, 0.33)
+    │   └── +
+    │       ├── ×
+    │       │   ├── LIN(0.30; 0.20, 0.08)
+    │       │   └── PER(0.23, 0.31; 0.05)
+    │       └── LIN(0.22; 0.14, 0.70)
+    └── ×
+        ├── LIN(0.06; 0.04, 0.12)
+        └── GE(0.37, 1.85; 0.10)
+
+
+
+Model 17, Weight 0.0870652658540169
+
+
+
+×
+├── LIN(0.14; 0.23, 0.05)
+└── +
+    ├── +
+    │   ├── GE(1.48, 1.50; 0.10)
+    │   └── +
+    │       ├── ×
+    │       │   ├── LIN(0.30; 0.20, 0.08)
+    │       │   └── +
+    │       │       ├── PER(0.23, 0.31; 0.05)
+    │       │       └── LIN(0.18; 0.16, 0.21)
+    │       └── LIN(0.61; 0.09, 0.30)
+    └── LIN(0.13; 0.07, 0.77)
+
+
+
+Model 18, Weight 0.042883653938260095
+
+
+
+×
+├── LIN(0.17; 0.29, 0.04)
+└── +
+    ├── +
+    │   ├── +
+    │   │   ├── ×
+    │   │   │   ├── LIN(0.67; 0.03, 0.28)
+    │   │   │   └── +
+    │   │   │       ├── GE(1.08, 1.75; 0.30)
+    │   │   │       └── GE(0.52, 1.02; 0.05)
+    │   │   └── ×
+    │   │       ├── LIN(0.23; 0.20, 0.09)
+    │   │       └── PER(0.18, 0.31; 0.04)
+    │   └── LIN(0.17; 0.31, 0.31)
+    └── LIN(0.18; 0.39, 0.11)</code></pre><pre><code class="language-julia hljs">decomposed_models = AutoGP.decompose(model);</code></pre><pre><code class="language-julia hljs"># Helper function to pretty print covariance.
+function show_string(x)
+    io = IOBuffer()
+    Base.show(io, MIME(&quot;text/plain&quot;), x)
+    return String(take!(io))
+end
+
+# Plot the decomposition of `model` into its constituent parts.
+function plot_decomposition(model::AutoGP.GPModel)
+    kernels = AutoGP.covariance_kernels(model)
+    forecasts = AutoGP.predict(
+        model, ds_query;
+        quantiles=[0.025, 0.975]);
+    fig, axes = PyPlot.subplots(
+        nrows=AutoGP.num_particles(model),
+        ncols=2,
+        tight_layout=true,
+        figsize=(12, 6*AutoGP.num_particles(model)),
+        )
+    for i=1:AutoGP.num_particles(model)
+        subdf = forecasts[forecasts.particle.==i,:]
+        # axes[i].set_title(show_string(kernels[i]), ha=&quot;left&quot;)
+        axes[i,1].plot(subdf[!,&quot;ds&quot;], subdf[!,&quot;y_mean&quot;], color=&quot;k&quot;, linewidth=1, label=show_string(kernels[i]))
+        axes[i,1].fill_between(
+            subdf.ds, subdf[!,&quot;y_0.025&quot;], subdf[!,&quot;y_0.975&quot;];
+            color=&quot;tab:blue&quot;, alpha=0.05)
+        axes[i,1].scatter(df_train.ds, df_train.y, marker=&quot;o&quot;, color=&quot;k&quot;, label=&quot;Observed Data&quot;)
+        axes[i,1].scatter(df_test.ds, df_test.y, marker=&quot;o&quot;, color=&quot;w&quot;, edgecolor=&quot;k&quot;, label=&quot;Test Data&quot;)
+        axes[i,2].text(0.5, 0.5, show_string(kernels[i]), transform=axes[i,2].transAxes,  va=&quot;center&quot;, ha=&quot;left&quot;)
+        axes[i,2].set_axis_off()
+    end
+    return fig, axes
+end</code></pre><pre><code class="nohighlight hljs">plot_decomposition (generic function with 1 method)</code></pre><pre><code class="language-julia hljs">idx = 13
+fig, ax = plot_decomposition(decomposed_models[idx]);
+fig.suptitle(&quot;Decomposition of Learned Model $(idx)&quot;, fontsize=18, va=&quot;center&quot;, y=1);</code></pre><p><img src="decomposition_files/decomposition_21_0.png" alt="png"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="callbacks.html">« Inspecting Online Inference</a><a class="docs-footer-nextpage" href="greedy_mcmc.html">Greedy Search and MCMC »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Sunday 31 August 2025 01:28">Sunday 31 August 2025</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
