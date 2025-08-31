@@ -29,13 +29,13 @@ jobs:
           version: '1.8'
       - uses: julia-actions/cache@v2
       - name: Install dependencies
-        shell: julia --color=yes --project=. {0}
+        shell: julia --color=yes --project=docs {0}
         run: |
           using Pkg
           Pkg.develop(PackageSpec(path=pwd()))
           Pkg.instantiate()
       - name: Build and deploy
-        run: julia --color=yes --project=. docs/make.jl
+        run: julia --color=yes --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # If authenticating with GitHub Actions token
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # If authenticating with SSH deploy key
