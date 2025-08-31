@@ -122,6 +122,7 @@ AutoGP.fit_greedy!
 
 ```@docs
 AutoGP.add_data!
+AutoGP.remove_data!
 AutoGP.maybe_resample!
 AutoGP.mcmc_structure!
 AutoGP.mcmc_parameters!
