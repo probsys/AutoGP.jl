@@ -15,6 +15,8 @@
 """Module for Gaussian process modeling library."""
 module GP
 
+import ..Transforms: LinearTransform
+
 import Statistics
 import Distributions
 import LinearAlgebra
@@ -52,6 +54,18 @@ The first form returns a `Real` number and the second form returns a
 covariance `Matrix`.
 """
 function eval_cov end
+
+"""
+    reparameterize(node::Node, t::LinearTransform)
+
+Reparameterize the covariance kernel according to the given
+[`LinearTransform`](@ref) applied to the input (known as an "input warping").
+For a kernel ``k(\\cdot,\\cdot; \\theta)`` and a linear
+transform ``f(t) = at+b`` over the time domain, this function
+returns kernel with new parameters ``\\theta'`` such that
+``k(at+b, au+b; \\theta) = k(t, u; \\theta')``.
+"""
+function reparameterize end
 
 """
     Base.size(node::Node)
@@ -108,6 +122,8 @@ function eval_cov(node::WhiteNoise, ts::Vector{Float64})
     return (ts .== ts') * node.value
 end
 
+reparameterize(node::WhiteNoise, t::LinearTransform) = node;
+
 @doc raw"""
     Constant(value)
 
@@ -130,6 +146,8 @@ function eval_cov(node::Constant, ts::Vector{Float64})
     n = length(ts)
     return node.value .* LinearAlgebra.ones(n, n)
 end
+
+reparameterize(node::Constant, t::LinearTransform) = node;
 
 @doc raw"""
     Linear(intercept[, bias=1, amplitude=1])
@@ -165,6 +183,12 @@ function eval_cov(node::Linear, ts::Vector{Float64})
     return node.bias .+ node.amplitude * C
 end
 
+function reparameterize(node::Linear, t::LinearTransform)
+    intercept = (node.intercept - t.intercept) / t.slope
+    amplitude = t.slope^2 * node.amplitude
+    return Linear(intercept, node.bias, amplitude)
+end
+
 @doc raw"""
     SquaredExponential(lengthscale[, amplitude=1])
 
@@ -193,6 +217,11 @@ function eval_cov(node::SquaredExponential, ts::Vector{Float64})
     dx = ts .- ts'
     C = exp.(-.5 .* dx .* dx ./ node.lengthscale^2)
     return node.amplitude * C
+end
+
+function reparameterize(node::SquaredExponential, t::LinearTransform)
+    lengthscale = node.lengthscale / abs(t.slope)
+    return SquaredExponential(lengthscale, node.amplitude)
 end
 
 @doc raw"""
@@ -227,6 +256,11 @@ function eval_cov(node::GammaExponential, ts::Vector{Float64})
     dt = abs.(ts .- ts')
     C = exp.(- (dt ./ node.lengthscale) .^ node.gamma)
     return node.amplitude * C
+end
+
+function reparameterize(node::GammaExponential, t::LinearTransform)
+    lengthscale = node.lengthscale / (abs(t.slope))
+    return GammaExponential(lengthscale, node.gamma, node.amplitude)
 end
 
 @doc raw"""
@@ -266,6 +300,11 @@ function eval_cov(node::Periodic, ts::Vector{Float64})
     return node.amplitude * C
 end
 
+function reparameterize(node::Periodic, t::LinearTransform)
+    period = node.period / abs(t.slope)
+    return Periodic(node.lengthscale, period, node.amplitude)
+end
+
 @doc raw"""
     Plus(left::Node, right::Node)
     Base.:+(left::Node, right::Node)
@@ -300,6 +339,12 @@ end
 Base.:+(a::Node, b::Node) = Plus(a, b)
 Base.:*(a::Node, b::Node) = Times(a, b)
 
+function reparameterize(node::Plus, t::LinearTransform)
+    left = reparameterize(node.left, t)
+    right = reparameterize(node.right, t)
+    return left + right
+end
+
 @doc raw"""
     Times(left::Node, right::Node)
     Base.:*(left::Node, right::Node)
@@ -329,6 +374,12 @@ end
 
 function eval_cov(node::Times, ts::Vector{Float64})
     return eval_cov(node.left, ts) .* eval_cov(node.right, ts)
+end
+
+function reparameterize(node::Times, t::LinearTransform)
+    left = reparameterize(node.left, t)
+    right = reparameterize(node.right, t)
+    return left * right
 end
 
 @doc raw"""
@@ -396,6 +447,14 @@ function eval_cov(node::ChangePoint, ts::Vector{Float64})
     # return LinearAlgebra.Symmetric(sig_1 .* k_1 + sig_2 .* k_2)
     K = sig_1 .* k_1 + sig_2 .* k_2
     return Matrix(LinearAlgebra.Symmetric(K))
+end
+
+function reparameterize(node::ChangePoint, t::LinearTransform)
+    left = reparameterize(node.left, t)
+    right = reparameterize(node.right, t)
+    location = (node.location - t.intercept) / t.slope
+    scale = node.scale / t.slope
+    return ChangePoint(left, right, location, scale, node.size, node.depth)
 end
 
 """
