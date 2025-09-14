@@ -20,6 +20,7 @@ using Statistics: mean
 abstract type Transform end
 function apply(::Transform, x) end
 function unapply(::Transform, x) end
+function invert(::Transform) end
 
 function apply(transforms::Vector{T}, x) where T <: Transform
     return foldl((u, transform) -> apply(transform, u), transforms; init=x)
@@ -36,6 +37,7 @@ struct LinearTransform <: Transform
 end
 apply(t::LinearTransform, x) = @. t.slope * x + t.intercept
 unapply(t::LinearTransform, x) = @. (x - t.intercept) / t.slope
+invert(t::LinearTransform) = LinearTransform(1/t.slope, -t.intercept/t.slope)
 
 unapply_mean(t::LinearTransform, mean) = unapply(t, mean)
 unapply_var(t::LinearTransform, var) = @. (1/t.slope^2) * var
@@ -48,7 +50,7 @@ end
 
 """
     LinearTransform(data::Vector{<:Real}, lo, hi)
-Transform such that `minimum(data) = lo` and `maximum(data)=hi`.
+Transform such that `minimum(data) = lo` and `maximum(data) = hi`.
 """
 function LinearTransform(data::Vector{<:Real}, lo, hi)
     tnan = filter(!isnan, data)
