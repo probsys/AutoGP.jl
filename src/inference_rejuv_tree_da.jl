@@ -68,7 +68,8 @@ end
         end
     # BinaryOpNode
     elseif node_type in [config.Plus, config.Times]
-        config = GPConfig(config; changepoints=false)
+        config = GPConfig(config;
+            changepoints=config.changepoints && (!config.changepoints_at_root))
         idx_l = Gen.get_child(idx, 1, config.max_branch)
         idx_r = Gen.get_child(idx, 2, config.max_branch)
         {*} ~ covariance_proposal_attach_detach(idx_l, path_to_hole, force_cp, config)
@@ -152,7 +153,7 @@ end
     # @assert subtree_idx_b > 1
     # @assert path_to_hole[subtree_idx_b] == true
     root_type = trace[:tree => (subtree_idx_a, :node_type)]
-    force_cp = root_type == config.ChangePoint
+    force_cp = (root_type == config.ChangePoint) && config.changepoints_at_root
     aux_tree ~ covariance_proposal_attach_detach(
                     subtree_idx_a, path_to_hole, force_cp,
                     GPConfig(config; max_depth=max_depth))
