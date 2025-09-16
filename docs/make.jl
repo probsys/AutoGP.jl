@@ -50,10 +50,10 @@ makedocs(
 deploydocs(
     repo="github.com/probsys/AutoGP.jl.git",
     push_preview=true,
-    # versions = [
-    #     "stable" => "v^",
-    #     "v#.#",
-    #     "v#.#.#",
-    #     "dev" => "dev",
-    #     ],
+    versions = [
+        "stable" => "v^",
+        "v#.#",
+        "v#.#.#",
+        "dev" => "dev",
+        ],
     )
