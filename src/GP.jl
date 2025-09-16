@@ -72,10 +72,10 @@ function reparameterize end
 
 Rescale the covariance kernel according to the given
 [`LinearTransform`](@ref) applied to the output.
-In particular, for a GP ``X ~ GP(0, k(\\cdot,\\cdot; \\theta))`` and a
+In particular, for a GP ``X \\sim \\mathrm{GP}(0, k(\\cdot,\\cdot; \\theta))`` and a
 transformation ``Y = aX + b``, this function
 returns a kernel with new parameters ``\\theta'``
-such that ``Y ~ GP(b, k(\\cdot,\\cdot; \\theta'))``.
+such that ``Y \\sim \\mathrm{GP}(b, k(\\cdot,\\cdot; \\theta'))``.
 """
 function rescale end
 
