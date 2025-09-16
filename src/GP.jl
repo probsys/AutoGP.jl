@@ -568,11 +568,12 @@ function Distributions.MvNormal(
         ts::Vector{Float64},
         xs::Vector{Float64},
         ts_pred::Vector{Float64};
-        noise_pred::Union{Nothing,Float64}=nothing)
+        noise_pred::Union{Nothing,Float64}=nothing,
+        mean::Function=t->0.)
     noise_pred = isnothing(noise_pred) ? noise : noise_pred
     n_prev = length(ts)
     n_new = length(ts_pred)
-    means = zeros(n_prev + n_new)
+    means = map(mean, vcat(ts, ts_pred))
     cov_matrix = compute_cov_matrix_vectorized(node, 0., vcat(ts, ts_pred))
     cov_matrix_11 = cov_matrix[1:n_prev, 1:n_prev] + (noise * LinearAlgebra.I)
     cov_matrix_22 = cov_matrix[n_prev+1:n_prev+n_new, n_prev+1:n_prev+n_new]
