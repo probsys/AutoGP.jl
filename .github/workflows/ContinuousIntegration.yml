@@ -16,7 +16,8 @@ permissions:
 
 
 jobs:
-  Test:
+  build:
+    name: Continuous Integration
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
