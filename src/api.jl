@@ -712,6 +712,10 @@ The weights of `models[i]` are arbitrary and have no meaningful value.
 
 This function is particularly useful for visualizing the individual time
 series structures that make up each particle of `model`.
+
+# See also
+
+[Time Series Decomposition Tutorial](./tutorials/decomposition.html)
 """
 function decompose(model::GPModel)
     kernels = covariance_kernels(model)
@@ -728,20 +732,71 @@ function decompose(model::GPModel)
         # Add observation noise as a WhiteNoise kernel.
         # typeof(kernel_list)
         # push!(kernel_list, GP.WhiteNoise(noises[i]))
+
         # Initialize new GPModel.
+        # TODO: Using zero noise for all particles.
         models[i] = GPModel(
                 model.ds, model.y;
-                n_particles=length(kernel_list), config=model.config)
+                n_particles=length(kernel_list),
+                config=GP.GPConfig(model.config; noise=1e-10))
         # -- Copy transforms, since add_data! may have been called on model.
         models[i].ds_transform = model.ds_transform
         models[i].y_transform = model.y_transform
         # Force update each particle to match the kernel fragment.
         for (j, trace) in enumerate(models[i].pf_state.traces)
-            models[i].pf_state.traces[j] = Inference.node_to_trace(
-                kernel_list[j], model.pf_state.traces[i])
+            models[i].pf_state.traces[j] =
+                Inference.node_to_trace(
+                    kernel_list[j],
+                    models[i].pf_state.traces[j],
+                    )
         end
         # Weights are arbitrary.
         models[i].pf_state.log_weights = zeros(length(models[i].pf_state.traces))
     end
     return models
+end
+
+
+"""
+    extract_kernel(model::GPModel, ::Type{T}; retain::Bool=true) where T <: GP.LeafNode
+
+Retain all primitive kernels of type `T <: `[`AutoGP.GP.LeafNode`](@ref) from each
+particle, while erasing the others. In particular, the erasure rules are as
+follows, where `G != T`:
+
+- [`AutoGP.GP.Plus`](@ref): `k1::T + k2::G` becomes `k1 + Constant(0)`.
+- [`AutoGP.GP.Times`](@ref): `k1::T * k2::G` becomes `k1 * Constant(1)`.
+- [`AutoGP.GP.ChangePoint`](@ref): `CP(k1::T, k2::G)` becomes `CP(k1, Constant(0))`.
+
+If all the primitive kernels have type `T`, then the returned kernel
+is [`GP.Constant`](@ref)`(0)`.
+
+If `retain=false`, then the above behavior is flipped: each primitive
+kernel of type `T` is erased while all other primitive kernels are
+retained.
+
+# See also
+
+- [Time Series Decomposition Tutorial](./tutorials/decomposition.html)
+- [`AutoGP.GP.extract_kernel`](@ref)
+"""
+function extract_kernel(model::GPModel, t::Type{T}; retain::Bool=true) where T <: GP.LeafNode
+    kernels = covariance_kernels(model)
+    new_kernels = [GP.extract_kernel(kernel, t; retain=retain) for kernel in kernels]
+    # TODO: Should we use zero noise or current noise?
+    new_model = GPModel(
+            model.ds, model.y;
+            n_particles=num_particles(model),
+            config=model.config)
+    # Copy transforms, since add_data! may have been called on model.
+    new_model.ds_transform = model.ds_transform
+    new_model.y_transform = model.y_transform
+    # Force update each particle to match the kernel fragment.
+    for (i, trace) in enumerate(new_model.pf_state.traces)
+        new_model.pf_state.traces[i] =
+            Inference.node_to_trace(new_kernels[i], model.pf_state.traces[i])
+    end
+    # Force update the weights.
+    new_model.pf_state.log_weights = model.pf_state.log_weights
+    return new_model
 end

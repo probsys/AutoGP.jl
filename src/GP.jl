@@ -511,6 +511,58 @@ function rescale(node::ChangePoint, t::LinearTransform)
     return ChangePoint(left, right, node.location, node.scale)
 end
 
+@doc raw"""
+    extract_kernel(node::Node, ::Type{T}; retain::Bool=false) where T<:LeafNode
+
+Retain only those primitive kernels in `node` of type `T <: LeafNode`,
+by replacing all other primitive kernels with an appropriate dummy kernel:
+- [`Constant`](@ref)`(0)` for [`Plus`](@ref)
+- [`Constant`](@ref)`(0)` for [`ChangePoint`](@ref)
+- [`Constant`](@ref)`(1)` for [`Plus`](@ref).
+
+If all primitive kernels in `node` are of type `T`, the return value is `Constant(0)`.
+
+If `retain=false` then the behavior is flipped: the primitive kernels of type `T`
+are removed, while the others are retained.
+"""
+function extract_kernel(node::Node, t::Type{T}; retain::Bool=true) where T<:LeafNode
+    k = replace_kernel(node, t, retain)
+    return isnothing(k) ? Constant(0) : k
+end
+
+# Helper function for extract_kernel.
+function replace_kernel end
+
+function replace_kernel(node::T, ::Type{T}, retain::Bool) where T<:LeafNode
+    return retain ? node : nothing
+end
+
+function replace_kernel(node::LeafNode, ::Type{T}, retain::Bool) where T<:LeafNode
+    return retain ? nothing : node
+end
+
+function replace_kernel(node::BinaryOpNode, t::Type{T}, retain::Bool) where T <: LeafNode
+    l = replace_operand(node, node.left, t, retain)
+    r = replace_operand(node, node.right, t, retain)
+    B = typeof(node)
+    B(l, r, (getfield(node, f) for f in fieldnames(B)[3:end])...)
+end
+
+# Helper function for replace kernel.
+function replace_operand end
+replace_operand(node::Times)        = Constant(1)
+replace_operand(node::Plus)         = Constant(0)
+replace_operand(node::ChangePoint)  = Constant(0)
+function replace_operand(
+        node::BinaryOpNode,
+        child::Node,
+        t::Type{T},
+        retain::Bool,
+        ) where T<:LeafNode
+    n = replace_kernel(child, t, retain)
+    return isnothing(n) ? replace_operand(node) : n
+    end
+
 """
     compute_cov_matrix_vectorized(node::Node, noise, ts)
 Compute covariance matrix by evaluating `node` on all pair of `ts`.
@@ -622,7 +674,7 @@ pretty(node::GammaExponential) = @sprintf("GE(%1.2f, %1.2f; %1.2f)", node.length
 pretty(node::Periodic) = @sprintf("PER(%1.2f, %1.2f; %1.2f)", node.lengthscale, node.period, node.amplitude)
 pretty(node::Plus) = "($(pretty(node.left)) + $(pretty(node.right)))"
 pretty(node::Times) = "($(pretty(node.left)) * $(pretty(node.right)))"
-pretty(node::ChangePoint) = "CP($(pretty(node.left)), $(pretty(node.right)), $(node.location), $(node.scale))"
+pretty(node::ChangePoint) = "CP($(pretty(node.left)), $(pretty(node.right)), " * @sprintf("%1.2f, %1.2e)", node.location, node.scale)
 
 function _make_indent_strings(pre, vert_bars, first, last)
     first && return ("", "")
@@ -653,7 +705,7 @@ end
 
 _pretty_BinaryOpNode(node::Plus) = '+'
 _pretty_BinaryOpNode(node::Times) = '\u00D7'
-_pretty_BinaryOpNode(node::ChangePoint) = ("CP$((node.location,node.scale))")
+_pretty_BinaryOpNode(node::ChangePoint) = @sprintf("CP(%1.2f, %1.2e)", node.location, node.scale)
 function _show_pretty(io::IO, node::BinaryOpNode, pre, vert_bars::Tuple; first=false, last=true)
     indent_vert_str, indent_str = _make_indent_strings(pre, vert_bars, first, last)
     # print(io, indent_vert_str)
@@ -715,7 +767,7 @@ an instance of [`Node`](@ref). The main `kwargs` (all optional) are:
         Times              => GP.Times,
         ChangePoint        => GP.ChangePoint,
     )
-    # Distribution over base and composite kernels.
+    # Distribution over primitive and composite kernels.
     node_dist_leaf::Vector{Float64} = normalize([0., 1, 0, 1, 1,])
     node_dist_nocp::Vector{Float64} = normalize([0., 6, 0, 6, 6, 5, 5])
     node_dist_cp::Vector{Float64}   = normalize([0., 6, 0, 6, 6, 4, 4, 2])
@@ -750,6 +802,8 @@ export Periodic
 export Times
 export Plus
 export ChangePoint
+
+export erase_kernel
 
 export GPConfig
 
