@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Add AutoGP as a Dev package.
+using Pkg
+Pkg.activate(@__DIR__)
+Pkg.develop(PackageSpec(path=joinpath(@__DIR__, "..")))
+Pkg.instantiate()
+
 using Documenter
 using AutoGP
 
@@ -43,10 +49,11 @@ makedocs(
 
 deploydocs(
     repo="github.com/probsys/AutoGP.jl.git",
-    # versions = [
-    #     "stable" => "v^",
-    #     "v#.#",
-    #     "v#.#.#",
-    #     "dev" => "dev",
-    #     ],
+    push_preview=true,
+    versions = [
+        "stable" => "v^",
+        "v#.#",
+        "v#.#.#",
+        "dev" => "dev",
+        ],
     )

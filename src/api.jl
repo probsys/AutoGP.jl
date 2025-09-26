@@ -134,19 +134,38 @@ Return the number of particles.
 num_particles(model::GPModel) = length(model.pf_state.traces)
 
 """
-    covariance_kernels(model::GPModel)
+    covariance_kernels(model::GPModel; reparameterize::Bool=true)
 Return [Gaussian process covariance kernels](@ref gp_cov_kernel) in `model`.
+If `reparameterize` is `true` (default), then the kernel parameters are
+given in the original data space (more interpretable); otherwise they are
+given in the transformed space over which parameter inference is performed
+(useful for debugging).
 """
-covariance_kernels(model::GPModel) = [trace[] for trace in model.pf_state.traces]
+function covariance_kernels(model::GPModel; reparameterize::Bool=true)
+    kernels = [trace[] for trace in model.pf_state.traces]
+    if reparameterize
+        y_transform_inv = Transforms.invert(model.y_transform)
+        kernels = GP.reparameterize.(kernels, [model.ds_transform])
+        kernels = GP.rescale.(kernels, [y_transform_inv])
+    end
+    return kernels
+end
 
 """
-    observation_noise_variances(model::GPModel)
+    observation_noise_variances(model::GPModel; reparameterize::Bool=true)
 Return list of observation noise variances for each particle in `model`.
+If `reparameterize` is `true` (default), then the kernel parameters are
+given in the original data space (more interpretable); otherwise they are
+given in the transformed space over which parameter inference is performed
+(useful for debugging).
 """
-observation_noise_variances(model::GPModel) = begin
+function observation_noise_variances(model::GPModel; reparameterize::Bool=true)
     noises = [t[:noise] for t in model.pf_state.traces]
     noises = Model.transform_param.(:noise, noises) .+ AutoGP.Model.JITTER
-    return Transforms.unapply_var.([model.y_transform], noises)
+    if reparameterize
+        noises = Transforms.unapply_var.([model.y_transform], noises)
+    end
+    return noises
 end
 
 """

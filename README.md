@@ -1,5 +1,6 @@
 # AutoGP.jl
 
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/probsys/AutoGP.jl/ContinuousIntegration.yml?label=tests)
 [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://probsys.github.io/AutoGP.jl/)
 [![Git Tag](https://img.shields.io/github/v/tag/probsys/AutoGP.jl)](https://github.com/probsys/AutoGP.jl/tags)
 [![License](https://img.shields.io/github/license/probsys/AutoGP.jl?color=lightgrey)](https://github.com/probsys/AutoGP.jl/blob/main/LICENSE.txt)
