@@ -1,7 +1,7 @@
 name = "AutoGP"
 uuid = "6eb593e7-dfb4-4e48-b98e-d7222cdf0053"
 authors = ["Feras A. Saad <fsaad@cmu.edu>"]
-version = "0.1.9"
+version = "0.1.11"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -29,3 +29,9 @@ Match = "1.2.0"
 Parameters = "0.12.3"
 Statistics = "1"
 julia = "1.8"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

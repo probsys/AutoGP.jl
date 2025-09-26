@@ -35,6 +35,8 @@ AutoGP.GP.eval_cov
 AutoGP.GP.compute_cov_matrix
 AutoGP.GP.compute_cov_matrix_vectorized
 AutoGP.GP.extract_kernel
+AutoGP.GP.reparameterize
+AutoGP.GP.rescale
 ```
 
 ## [Primitive Kernels](@id gp_cov_kernel_prim)
