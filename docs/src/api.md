@@ -143,3 +143,9 @@ AutoGP.observation_noise_variances
 AutoGP.decompose
 AutoGP.extract_kernel
 ```
+
+## [Serialization](@id model_serialization)
+
+```@docs
+Base.Dict(model::AutoGP.GPModel)
+```

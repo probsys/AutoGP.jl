@@ -804,3 +804,72 @@ function extract_kernel(model::GPModel, t::Type{T}; retain::Bool=true) where T <
     new_model.pf_state.log_weights = model.pf_state.log_weights
     return new_model
 end
+
+# Serialization
+
+"""
+    Base.Dict(model::GPModel)
+
+Convert a [`GPModel`](@ref) into a dictionary that can be saved and
+loaded from disk, as shown in the following example.
+
+# Example
+```
+using AutoGP, Dates, Serialization
+model = AutoGP.GPModel([Date("2025-01-01"), Date("2025-01-02")], [1.0, 2.0])
+serialize("model.autogp", Dict(model))
+loaded_model = AutoGP.GPModel(deserialize("model.autogp"))
+```
+"""
+function Base.Dict(model::GPModel)
+    kernels = covariance_kernels(model; reparameterize=false)
+    noises = observation_noise_variances(model; reparameterize=false)
+    m = Dict([
+            # pf_state
+            "pf_state"     => Dict([
+                                "log_weights" => model.pf_state.log_weights,
+                                "log_ml_est"  => model.pf_state.log_ml_est,
+                            ]),
+            # kernels and noise
+            "kernels"      => kernels,
+            "noises"       => noises,
+            # serialize other fields
+            "config"       => model.config,
+            "ds"           => model.ds,
+            "y"            => model.y,
+            "ds_transform" => model.ds_transform,
+            "y_transform"  => model.y_transform,
+        ])
+    return m
+end
+
+
+function GPModel(m::Base.Dict{String, Any})
+    n_particles = length(m["kernels"])
+    ds_numeric = Transforms.apply(m["ds_transform"], to_numeric.(m["ds"]))
+    y_numeric = Transforms.apply(m["y_transform"], m["y"])
+    observations = Gen.choicemap((:xs, y_numeric))
+    pf_state = Gen.initialize_particle_filter(
+        Model.model, (ds_numeric, m["config"]), observations, n_particles)
+    # Set the pf_state.
+    pf_state.log_weights = m["pf_state"]["log_weights"]
+    pf_state.log_ml_est = m["pf_state"]["log_ml_est"]
+    for (i, (kernel, noise)) in enumerate(zip(m["kernels"], m["noises"]))
+        pf_state.traces[i] = Inference.node_to_trace(
+            kernel, m["config"], ds_numeric, y_numeric, noise)
+    end
+    # Return the GP model.
+    return GPModel(
+        pf_state,
+        m["config"],
+        collect(m["ds"]),
+        collect(m["y"]),
+        m["ds_transform"],
+        m["y_transform"])
+end
+
+# https://juliaio.github.io/JLD2.jl/stable/customserialization/
+# struct GPModelSerialization x::Dict end
+# JLD2.writeas(::Type{GPModel}) = GPModelSerialization
+# JLD2.wconvert(::Type{GPModelSerialization}, model::GPModel) = GPModelSerialization(Dict(model))
+# JLD2.rconvert(::Type{GPModel}, g::GPModelSerialization) = GPModel(g.x)
