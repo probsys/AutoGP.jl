@@ -267,3 +267,18 @@ function node_to_trace(node::Node, trace::Gen.Trace)
         constraints,
         )[1]
 end
+
+function node_to_trace(
+        node::Node,
+        config::GPConfig,
+        ts::Vector{Float64},
+        xs::Vector{Float64},
+        noise::Float64)
+    choicemap_obs = Gen.choicemap((:xs, xs))
+    choicemap_node = Gen.choicemap()
+    Gen.set_submap!(choicemap_node, :tree, node_to_choicemap(node, config))
+    constraints = merge(choicemap_node, choicemap_obs)
+    constraints[:noise] = Model.untransform_param(:noise, noise)
+    constraints[:xs] = xs
+    return Gen.generate(Model.model, (ts, config), constraints)[1]
+end
