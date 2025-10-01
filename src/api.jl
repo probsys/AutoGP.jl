@@ -433,7 +433,9 @@ function add_data!(model::GPModel, ds::IndexType, y::Vector{<:Real})
     y_numeric = Transforms.apply(model.y_transform, model.y)
     # Prepare observations.
     observations = Gen.choicemap((:xs, y_numeric))
-    !isnothing(model.config.noise) && (observations[:noise] = trace[:noise])
+    if !isnothing(model.config.noise)
+        observations[:noise] = Model.untransform_param(:noise, model.config.noise)
+    end
     # Run SMC step.
     Inference.smc_step!(model.pf_state, (ds_numeric, model.config), observations)
 end
@@ -456,7 +458,9 @@ function remove_data!(model::GPModel, ds::IndexType)
     y_numeric = Transforms.apply(model.y_transform, model.y)
     # Prepare observations.
     observations = Gen.choicemap((:xs, y_numeric))
-    !isnothing(model.config.noise) && (observations[:noise] = trace[:noise])
+    if !isnothing(model.config.noise)
+        observations[:noise] = Model.untransform_param(:noise, config.noise)
+    end
     # Run SMC step.
     Inference.smc_step!(model.pf_state, (ds_numeric, model.config), observations)
 end
