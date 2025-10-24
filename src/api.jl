@@ -722,7 +722,7 @@ series structures that make up each particle of `model`.
 [Time Series Decomposition Tutorial](./tutorials/decomposition.html)
 """
 function decompose(model::GPModel)
-    kernels = covariance_kernels(model)
+    kernels = covariance_kernels(model; reparameterize=false)
     unrolled = map(GP.unroll, kernels)
     @assert length(kernels) == num_particles(model)
     models = Vector{GPModel}(undef, length(kernels))
@@ -785,7 +785,7 @@ retained.
 - [`AutoGP.GP.extract_kernel`](@ref)
 """
 function extract_kernel(model::GPModel, t::Type{T}; retain::Bool=true) where T <: GP.LeafNode
-    kernels = covariance_kernels(model)
+    kernels = covariance_kernels(model; reparameterize=false)
     new_kernels = [GP.extract_kernel(kernel, t; retain=retain) for kernel in kernels]
     # TODO: Should we use zero noise or current noise?
     new_model = GPModel(
