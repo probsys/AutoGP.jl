@@ -84,4 +84,7 @@ end
 
     end
 
+    # Ensure direct serialization fails.
+    @test_throws ArgumentError serialize("model.autogp", model1)
+
 end
