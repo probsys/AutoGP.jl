@@ -15,6 +15,7 @@
 import DataFrames
 import Distributions
 import Random
+import Serialization
 
 import Gen
 
@@ -866,6 +867,12 @@ function GPModel(m::Base.Dict{String, Any})
         collect(m["y"]),
         m["ds_transform"],
         m["y_transform"])
+end
+
+# Disable direct serialization.
+function Serialization.serialize(path::String, model::GPModel)
+    throw(ArgumentError("Do not use serialize(path, model:GPModel), instead use" *
+        "use serialize(path, Dict(model)."))
 end
 
 # https://juliaio.github.io/JLD2.jl/stable/customserialization/
