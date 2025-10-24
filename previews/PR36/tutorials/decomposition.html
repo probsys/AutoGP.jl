@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Time Series Decomposition · AutoGP</title><meta name="title" content="Time Series Decomposition · AutoGP"/><meta property="og:title" content="Time Series Decomposition · AutoGP"/><meta property="twitter:title" content="Time Series Decomposition · AutoGP"/><meta name="description" content="Documentation for AutoGP."/><meta property="og:description" content="Documentation for AutoGP."/><meta property="twitter:description" content="Documentation for AutoGP."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../index.html"><img src="../assets/logo.svg" alt="AutoGP logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../index.html">AutoGP</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../index.html">Home</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="overview.html">Overview</a></li><li><a class="tocitem" href="iclaims.html">Insurance Claims</a></li><li><a class="tocitem" href="callbacks.html">Inspecting Online Inference</a></li><li class="is-active"><a class="tocitem" href="decomposition.html">Time Series Decomposition</a><ul class="internal"><li><a class="tocitem" href="#Loading-Data"><span>Loading Data</span></a></li><li><a class="tocitem" href="#Creating-an-AutoGP-Model"><span>Creating an AutoGP Model</span></a></li><li><a class="tocitem" href="#Model-Fitting-via-SMC"><span>Model Fitting via SMC</span></a></li><li><a class="tocitem" href="#Hierarchical-Decomposition-of-Kernels"><span>Hierarchical Decomposition of Kernels</span></a></li><li><a class="tocitem" href="#&quot;STL&quot;-Style-Decomposition"><span>&quot;STL&quot; Style Decomposition</span></a></li></ul></li><li><a class="tocitem" href="greedy_mcmc.html">Greedy Search and MCMC</a></li></ul></li><li><a class="tocitem" href="../api.html">AutoGP API</a></li><li><a class="tocitem" href="../gp.html">Gaussian Process Library</a></li><li><a class="tocitem" href="../utils.html">Utilities</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href="decomposition.html">Time Series Decomposition</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="decomposition.html">Time Series Decomposition</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/probsys/AutoGP.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/probsys/AutoGP.jl/blob/main/docs/src/tutorials/decomposition.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Time-Series-Decomposition"><a class="docs-heading-anchor" href="#Time-Series-Decomposition">Time Series Decomposition</a><a id="Time-Series-Decomposition-1"></a><a class="docs-heading-anchor-permalink" href="#Time-Series-Decomposition" title="Permalink"></a></h1><p>This tutorial shows how to decompose AutoGP models into their constituent temporal components, to gain more insight into the learned time series structures.</p><p>We will demonstrate two methods.</p><ul><li><a href="../api.html#AutoGP.decompose"><code>AutoGP.decompose</code></a>. This function breaks down a composite kernel into its constituent subkernels.</li></ul><ul><li><a href="../api.html#AutoGP.extract_kernel"><code>AutoGP.extract_kernel</code></a>. This function extracts a specific primitive kernel from a composite kernel, while discarding the others.</li></ul><pre><code class="language-julia hljs">import AutoGP</code></pre><pre><code class="language-julia hljs">using CSV
+using Dates
+using DataFrames
+using PythonPlot</code></pre><h2 id="Loading-Data"><a class="docs-heading-anchor" href="#Loading-Data">Loading Data</a><a id="Loading-Data-1"></a><a class="docs-heading-anchor-permalink" href="#Loading-Data" title="Permalink"></a></h2><pre><code class="language-julia hljs">AutoGP.seed!(10)</code></pre><pre><code class="language-julia hljs">data = CSV.File(&quot;assets/M1266.csv&quot;)
+M3 = DataFrame(data);
+df = M3[:,[&quot;ds&quot;,&quot;y&quot;]];</code></pre><p>We next split the data into a training set and test set.</p><pre><code class="language-julia hljs">n_test = 18
+n_train = DataFrames.nrow(df) - n_test
+df_train = df[1:end-n_test, :]
+df_test = df[end-n_test+1:end, :]
+
+fig, ax = PythonPlot.subplots(figsize=(10,4))
+ax.scatter(df_train.ds, df_train.y, marker=&quot;o&quot;, color=&quot;k&quot;, alpha=.5)
+ax.scatter(df_test.ds, df_test.y, marker=&quot;o&quot;, color=&quot;w&quot;, edgecolor=&quot;k&quot;, label=&quot;Test Data&quot;)</code></pre><p><img src="decomposition_files/decomposition_8_0.png" alt="png"/></p><pre><code class="nohighlight hljs">Python: &lt;matplotlib.collections.PathCollection object at 0x71fc21baa480&gt;</code></pre><h2 id="Creating-an-AutoGP-Model"><a class="docs-heading-anchor" href="#Creating-an-AutoGP-Model">Creating an AutoGP Model</a><a id="Creating-an-AutoGP-Model-1"></a><a class="docs-heading-anchor-permalink" href="#Creating-an-AutoGP-Model" title="Permalink"></a></h2><pre><code class="language-julia hljs">model = AutoGP.GPModel(df_train.ds, df_train.y; n_particles=18);</code></pre><pre><code class="language-julia hljs">ds_future = range(start=df.ds[end]+Dates.Month(1), step=Dates.Month(1), length=4*size(df_test)[1])
+ds_query = vcat(df_train.ds, df_test.ds, ds_future)
+forecasts = AutoGP.predict(model, ds_query; quantiles=[0.025, 0.975]);</code></pre><p>Let us visualize the forecasts before model fitting. The model clearly underfits the data.</p><pre><code class="language-julia hljs">fig, ax = PythonPlot.subplots(figsize=(10,4))
+for i=1:AutoGP.num_particles(model)
+    subdf = forecasts[forecasts.particle.==i,:]
+    ax.plot(subdf[!,&quot;ds&quot;], subdf[!,&quot;y_mean&quot;], color=&quot;k&quot;, linewidth=.25)
+    ax.fill_between(subdf.ds, subdf[!,&quot;y_0.025&quot;], subdf[!,&quot;y_0.975&quot;], color=&quot;tab:blue&quot;, alpha=0.05)
+end
+ax.scatter(df_train.ds, df_train.y, marker=&quot;o&quot;, color=&quot;k&quot;)
+ax.scatter(df_test.ds, df_test.y, marker=&quot;o&quot;, color=&quot;w&quot;, edgecolor=&quot;k&quot;, label=&quot;Test Data&quot;)</code></pre><p><img src="decomposition_files/decomposition_13_0.png" alt="png"/></p><pre><code class="nohighlight hljs">Python: &lt;matplotlib.collections.PathCollection object at 0x71fc1d32ea20&gt;</code></pre><h2 id="Model-Fitting-via-SMC"><a class="docs-heading-anchor" href="#Model-Fitting-via-SMC">Model Fitting via SMC</a><a id="Model-Fitting-via-SMC-1"></a><a class="docs-heading-anchor-permalink" href="#Model-Fitting-via-SMC" title="Permalink"></a></h2><pre><code class="language-julia hljs">AutoGP.fit_smc!(model; schedule=AutoGP.Schedule.linear_schedule(n_train, .025), n_mcmc=50, n_hmc=25, verbose=false);</code></pre><pre><code class="language-julia hljs">forecasts = AutoGP.predict(model, ds_query; quantiles=[0.025, 0.975]);</code></pre><pre><code class="language-julia hljs">fig, ax = PythonPlot.subplots(figsize=(10,4))
+for i=1:AutoGP.num_particles(model)
+    subdf = forecasts[forecasts.particle.==i,:]
+    ax.plot(subdf[!,&quot;ds&quot;], subdf[!,&quot;y_mean&quot;], color=&quot;k&quot;, linewidth=.5)
+    ax.fill_between(
+        subdf.ds, subdf[!,&quot;y_0.025&quot;], subdf[!,&quot;y_0.975&quot;];
+        color=&quot;tab:blue&quot;, alpha=0.05)
+end
+ax.scatter(df_train.ds, df_train.y, marker=&quot;o&quot;, color=&quot;k&quot;, label=&quot;Observed Data&quot;)
+ax.scatter(df_test.ds, df_test.y, marker=&quot;o&quot;, color=&quot;w&quot;, edgecolor=&quot;k&quot;, label=&quot;Test Data&quot;)</code></pre><p><img src="decomposition_files/decomposition_17_0.png" alt="png"/></p><pre><code class="nohighlight hljs">Python: &lt;matplotlib.collections.PathCollection object at 0x71fc17d37290&gt;</code></pre><h2 id="Hierarchical-Decomposition-of-Kernels"><a class="docs-heading-anchor" href="#Hierarchical-Decomposition-of-Kernels">Hierarchical Decomposition of Kernels</a><a id="Hierarchical-Decomposition-of-Kernels-1"></a><a class="docs-heading-anchor-permalink" href="#Hierarchical-Decomposition-of-Kernels" title="Permalink"></a></h2><p>Let us first inspect the learned kernels.</p><pre><code class="language-julia hljs">weights = AutoGP.particle_weights(model)
+kernels = AutoGP.covariance_kernels(model)
+for (i, (k, w)) in enumerate(zip(kernels, weights))
+    println(&quot;Model $(i), Weight $(w)&quot;)
+    display(k)
+end</code></pre><pre><code class="nohighlight hljs">Model 1, Weight 0.09658896969666558
+
+
+
++
+├── PER(0.77, 0.10; 0.03)
+└── GE(1.79, 1.74; 0.20)
+
+
+
+Model 2, Weight 0.039614762558316634
+
+
+
++
+├── ×
+│   ├── PER(0.74, 0.10; 0.03)
+│   └── LIN(0.09; 0.46, 0.02)
+└── GE(1.41, 1.73; 0.16)
+
+
+
+Model 3, Weight 0.06625733864702288
+
+
+
++
+├── PER(0.89, 0.10; 0.03)
+└── GE(1.64, 1.73; 0.12)
+
+
+
+Model 4, Weight 0.010545550106178718
+
+
+
++
+├── ×
+│   ├── +
+│   │   ├── PER(0.73, 0.10; 0.04)
+│   │   └── LIN(0.12; 0.48, 0.03)
+│   └── LIN(0.76; 0.05, 0.03)
+└── GE(1.12, 1.82; 0.09)
+
+
+
+Model 5, Weight 0.01043051073070849
+
+
+
++
+├── ×
+│   ├── +
+│   │   ├── PER(0.73, 0.10; 0.04)
+│   │   └── LIN(0.25; 0.07, 0.24)
+│   └── LIN(0.76; 0.05, 0.03)
+└── GE(1.12, 1.82; 0.09)
+
+
+
+Model 6, Weight 0.10089196157472988
+
+
+
++
+├── PER(0.74, 0.10; 0.03)
+└── +
+    ├── LIN(1.36; 0.15, 0.06)
+    └── GE(1.41, 1.73; 0.16)
+
+
+
+Model 7, Weight 0.06760101185923048
+
+
+
++
+├── PER(0.95, 0.10; 0.03)
+└── GE(1.68, 1.77; 0.21)
+
+
+
+Model 8, Weight 0.036215946339597245
+
+
+
++
+├── PER(0.91, 0.10; 0.03)
+└── +
+    ├── GE(0.78, 1.73; 0.05)
+    └── LIN(0.13; 0.08, 0.07)
+
+
+
+Model 9, Weight 0.05838021457226862
+
+
+
++
+├── PER(0.89, 0.10; 0.03)
+└── GE(1.64, 1.73; 0.12)
+
+
+
+Model 10, Weight 0.010614087663444665
+
+
+
++
+├── ×
+│   ├── +
+│   │   ├── PER(1.04, 0.10; 0.04)
+│   │   └── LIN(0.37; 0.07, 1.43)
+│   └── LIN(0.13; 0.34, 0.06)
+└── GE(1.62, 1.81; 0.10)
+
+
+
+Model 11, Weight 0.03466466846299965
+
+
+
++
+├── PER(0.91, 0.10; 0.03)
+└── +
+    ├── LIN(0.66; 0.14, 0.42)
+    └── GE(0.78, 1.73; 0.05)
+
+
+
+Model 12, Weight 0.061442233630051295
+
+
+
++
+├── LIN(0.40; 0.22, 0.52)
+└── +
+    ├── PER(0.89, 0.10; 0.03)
+    └── GE(1.64, 1.73; 0.12)
+
+
+
+Model 13, Weight 0.04688201588759647
+
+
+
++
+├── PER(0.95, 0.10; 0.03)
+└── +
+    ├── LIN(0.49; 0.10, 0.68)
+    └── GE(1.53, 1.71; 0.06)
+
+
+
+Model 14, Weight 0.07199528556277592
+
+
+
++
+├── PER(0.67, 0.10; 0.03)
+└── GE(1.09, 1.71; 0.16)
+
+
+
+Model 15, Weight 0.039916775290948496
+
+
+
++
+├── LIN(0.46; 0.03, 0.56)
+└── +
+    ├── PER(0.91, 0.10; 0.03)
+    └── GE(0.78, 1.73; 0.05)
+
+
+
+Model 16, Weight 0.06695006913745713
+
+
+
++
+├── LIN(0.63; 0.13, 0.31)
+└── +
+    ├── PER(0.89, 0.10; 0.03)
+    └── GE(1.22, 1.69; 0.09)
+
+
+
+Model 17, Weight 0.09300479594368523
+
+
+
++
+├── PER(0.74, 0.10; 0.03)
+└── GE(1.41, 1.73; 0.16)
+
+
+
+Model 18, Weight 0.08800380233632281
+
+
+
++
+├── PER(0.67, 0.10; 0.03)
+└── GE(1.09, 1.71; 0.16)</code></pre><p>We now use <a href="../api.html#AutoGP.decompose"><code>AutoGP.decompose</code></a> to hierarchically break down the composite kernel into all the constituent subkernels.</p><pre><code class="language-julia hljs">decomposed_models = AutoGP.decompose(model);</code></pre><pre><code class="language-julia hljs"># Helper function to pretty print covariance.
+function show_string(x)
+    io = IOBuffer()
+    Base.show(io, MIME(&quot;text/plain&quot;), x)
+    return String(take!(io))
+end
+
+# Plot the decomposition of `model` into its constituent parts.
+function plot_decomposition(model::AutoGP.GPModel)
+    kernels = AutoGP.covariance_kernels(model)
+    forecasts = AutoGP.predict(
+        model, ds_query;
+        quantiles=[0.025, 0.975]);
+    fig, axes = PythonPlot.subplots(
+        nrows=AutoGP.num_particles(model),
+        ncols=2,
+        tight_layout=true,
+        figsize=(12, 6*AutoGP.num_particles(model)),
+        )
+    for i=1:AutoGP.num_particles(model)
+        subdf = forecasts[forecasts.particle.==i,:]
+        # axes[i].set_title(show_string(kernels[i]), ha=&quot;left&quot;)
+        axes[i-1,0].plot(subdf[!,&quot;ds&quot;], subdf[!,&quot;y_mean&quot;], color=&quot;k&quot;, linewidth=1, label=show_string(kernels[i]))
+        axes[i-1,0].fill_between(
+            subdf.ds, subdf[!,&quot;y_0.025&quot;], subdf[!,&quot;y_0.975&quot;];
+            color=&quot;tab:blue&quot;, alpha=0.05)
+        axes[i-1,0].scatter(df_train.ds, df_train.y, marker=&quot;o&quot;, color=&quot;k&quot;, label=&quot;Observed Data&quot;)
+        axes[i-1,0].scatter(df_test.ds, df_test.y, marker=&quot;o&quot;, color=&quot;w&quot;, edgecolor=&quot;k&quot;, label=&quot;Test Data&quot;)
+        axes[i-1,1].text(0.5, 0.5, show_string(kernels[i]), transform=axes[i-1,1].transAxes,  va=&quot;center&quot;, ha=&quot;left&quot;)
+        axes[i-1,1].set_axis_off()
+    end
+    return fig, axes
+end</code></pre><pre><code class="nohighlight hljs">plot_decomposition (generic function with 1 method)</code></pre><p>Let us plot the decomposition of a given particle in the ensemble.</p><pre><code class="language-julia hljs">idx = 13
+fig, ax = plot_decomposition(decomposed_models[11]);
+fig.suptitle(&quot;Decomposition of Learned Model $(idx)&quot;, fontsize=18, va=&quot;center&quot;, y=1);</code></pre><p><img src="decomposition_files/decomposition_25_0.png" alt="png"/></p><h2 id="&quot;STL&quot;-Style-Decomposition"><a class="docs-heading-anchor" href="#&quot;STL&quot;-Style-Decomposition">&quot;STL&quot; Style Decomposition</a><a id="&quot;STL&quot;-Style-Decomposition-1"></a><a class="docs-heading-anchor-permalink" href="#&quot;STL&quot;-Style-Decomposition" title="Permalink"></a></h2><p>An alternative approach to decomposing kernels is using <a href="../api.html#AutoGP.extract_kernel"><code>AutoGP.extract_kernel</code></a>, which retains only a specific primitive kernel while discarding the others. In the following example, we will extract the <a href="../gp.html#AutoGP.GP.Linear"><code>AutoGP.GP.Linear</code></a>, <a href="../gp.html#AutoGP.GP.Periodic"><code>AutoGP.GP.Periodic</code></a>, and <a href="../gp.html#AutoGP.GP.GammaExponential"><code>AutoGP.GP.GammaExponential</code></a> kernels from each learned particle to produce an &quot;STL&quot; style decomposition.</p><pre><code class="language-julia hljs">model_per = AutoGP.extract_kernel(model, AutoGP.GP.Periodic);
+model_ge = AutoGP.extract_kernel(model, AutoGP.GP.GammaExponential);
+model_lin = AutoGP.extract_kernel(model, AutoGP.GP.Linear);</code></pre><p>Let us study the original and decomposed kernels for a given particle.</p><p>Unlike a <a href="https://en.wikipedia.org/wiki/Decomposition_of_time_series">traditional time series decomposition</a>, which typically assumes a fixed additive or multiplicative structure, these decompositions retain the learned structure. For example, the decomposition for <code>Linear</code> may have a quadratic term, if the overall kernel has a subexpression of the form <code>LIN * LIN</code>.</p><p>The kernel structure is retained by using the <a href="../gp.html#AutoGP.GP.Constant"><code>AutoGP.GP.Constant</code></a> to act as a &quot;noop&quot;, as shown below. See also <a href="../api.html#AutoGP.extract_kernel"><code>AutoGP.extract_kernel</code></a> for full details.</p><pre><code class="language-julia hljs">idx = 2
+println(&quot;Model $(idx) - FULL&quot;); display(AutoGP.covariance_kernels(model)[2])
+println(&quot;Model $(idx) - LIN only&quot;); display(AutoGP.covariance_kernels(model_lin)[2])
+println(&quot;Model $(idx) - PER only&quot;); display(AutoGP.covariance_kernels(model_per)[2])
+println(&quot;Model $(idx) - GE only&quot;); display(AutoGP.covariance_kernels(model_ge)[2])</code></pre><pre><code class="nohighlight hljs">Model 2 - FULL
+
+
+
++
+├── ×
+│   ├── PER(0.74, 0.10; 0.03)
+│   └── LIN(0.09; 0.46, 0.02)
+└── GE(1.41, 1.73; 0.16)
+
+
+
+Model 2 - LIN only
+
+
+
++
+├── ×
+│   ├── CONST(1.00)
+│   └── LIN(0.09; 0.46, 0.02)
+└── CONST(0.00)
+
+
+
+Model 2 - PER only
+
+
+
++
+├── ×
+│   ├── PER(0.74, 0.10; 0.03)
+│   └── CONST(1.00)
+└── CONST(0.00)
+
+
+
+Model 2 - GE only
+
+
+
++
+├── ×
+│   ├── CONST(1.00)
+│   └── CONST(1.00)
+└── GE(1.41, 1.73; 0.16)</code></pre><p>We can now obtain forecasts corresponding to the Linear, Periodic, and GammaExponential components in each particle.</p><pre><code class="language-julia hljs">forecasts_lin = AutoGP.predict(model_lin, ds_query .+ Day(1); quantiles=[0.025, 0.975]);
+forecasts_per = AutoGP.predict(model_per, ds_query .+ Day(1); quantiles=[0.025, 0.975]);
+forecasts_ge = AutoGP.predict(model_ge, ds_query .+ Day(1); quantiles=[0.025, 0.975]);</code></pre><pre><code class="language-julia hljs">fig, axes = PythonPlot.subplots(figsize=(10,14), nrows=3, tight_layout=true)
+for (ax, m, f) in zip(axes, [model_lin, model_per, model_ge], [forecasts_lin, forecasts_per, forecasts_ge])
+    for i=1:AutoGP.num_particles(m)
+        subdf = f[f.particle.==i,:]
+        ax.plot(subdf[!,&quot;ds&quot;], subdf[!,&quot;y_mean&quot;], color=&quot;k&quot;, linewidth=.5)
+        ax.fill_between(subdf.ds, subdf[!,&quot;y_0.025&quot;], subdf[!,&quot;y_0.975&quot;]; color=&quot;tab:blue&quot;, alpha=0.05)
+    end
+    ax.scatter(df_train.ds, df_train.y, marker=&quot;o&quot;, color=&quot;k&quot;, label=&quot;Observed Data&quot;)
+    ax.scatter(df_test.ds, df_test.y, marker=&quot;o&quot;, color=&quot;w&quot;, edgecolor=&quot;k&quot;, label=&quot;Test Data&quot;)
+end
+axes[0].set_title(&quot;STRUCTURE: LIN&quot;)
+axes[1].set_title(&quot;STRUCTURE: PER&quot;)
+axes[2].set_title(&quot;STRUCTURE: GE&quot;)</code></pre><p><img src="decomposition_files/decomposition_33_0.png" alt="png"/></p><pre><code class="nohighlight hljs">Python: Text(0.5, 1.0, &#39;STRUCTURE: GE&#39;)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="callbacks.html">« Inspecting Online Inference</a><a class="docs-footer-nextpage" href="greedy_mcmc.html">Greedy Search and MCMC »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Friday 24 October 2025 22:15">Friday 24 October 2025</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

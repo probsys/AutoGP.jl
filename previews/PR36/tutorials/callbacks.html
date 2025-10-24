@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Inspecting Online Inference · AutoGP</title><meta name="title" content="Inspecting Online Inference · AutoGP"/><meta property="og:title" content="Inspecting Online Inference · AutoGP"/><meta property="twitter:title" content="Inspecting Online Inference · AutoGP"/><meta name="description" content="Documentation for AutoGP."/><meta property="og:description" content="Documentation for AutoGP."/><meta property="twitter:description" content="Documentation for AutoGP."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../index.html"><img src="../assets/logo.svg" alt="AutoGP logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../index.html">AutoGP</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../index.html">Home</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="overview.html">Overview</a></li><li><a class="tocitem" href="iclaims.html">Insurance Claims</a></li><li class="is-active"><a class="tocitem" href="callbacks.html">Inspecting Online Inference</a></li><li><a class="tocitem" href="decomposition.html">Time Series Decomposition</a></li><li><a class="tocitem" href="greedy_mcmc.html">Greedy Search and MCMC</a></li></ul></li><li><a class="tocitem" href="../api.html">AutoGP API</a></li><li><a class="tocitem" href="../gp.html">Gaussian Process Library</a></li><li><a class="tocitem" href="../utils.html">Utilities</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href="callbacks.html">Inspecting Online Inference</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="callbacks.html">Inspecting Online Inference</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/probsys/AutoGP.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/probsys/AutoGP.jl/blob/main/docs/src/tutorials/callbacks.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Inspecting-Online-Inference"><a class="docs-heading-anchor" href="#Inspecting-Online-Inference">Inspecting Online Inference</a><a id="Inspecting-Online-Inference-1"></a><a class="docs-heading-anchor-permalink" href="#Inspecting-Online-Inference" title="Permalink"></a></h1><p>The goal of this tutorial is to demonstrate [callback functions](https://en.wikipedia.org/wiki/Callback<em>(computer</em>programming) for inspecting intermediate results in the sequential Monte Carlo loop of <a href="../api.html#AutoGP.fit_smc!"><code>AutoGP.fit_smc!</code></a>. These callback functions can be used to inspect how the forecasts evolve as more data is incorporated in the model, obtain runtime versus accuracy profiles, and debug poorly performing inference, among many other use cases.</p><pre><code class="language-julia hljs">import AutoGP
+import CSV
+import Dates
+import DataFrames
+import Distributions
+
+using AutoGP.GP
+using PyPlot: plt</code></pre><p>We begin by using functions from the <a href="../gp.html#AutoGP.GP"><code>AutoGP.GP</code></a> module to generate synthetic data from a ground-truth Gaussian process time series model.</p><pre><code class="language-julia hljs">AutoGP.seed!(2)
+cov = (Linear(1,0,50) * Periodic(5,2)) + GammaExponential(1,1)
+noise = .1
+n = 100
+
+ds = Vector{Float64}(range(0, 20, length=n))
+dist = Distributions.MvNormal(cov, noise, Float64[], Float64[], ds)
+y = Distributions.rand(dist);
+
+fig, ax = plt.subplots(figsize=(6, 4), dpi=100, tight_layout=true)
+ax.plot(ds, y, marker=&quot;.&quot;, markerfacecolor=&quot;none&quot;, markeredgecolor=&quot;k&quot;, color=&quot;black&quot;);</code></pre><p><img src="callbacks_files/callbacks_4_0.png" alt="png"/></p><p>We next initialize an <a href="../api.html#AutoGP.GPModel"><code>AutoGP.GPModel</code></a> instance with 8 particles. Recall that initializing a model does not fit it to the data.</p><pre><code class="language-julia hljs">model = AutoGP.GPModel(ds, y; n_particles=8);</code></pre><p>We next define a callback that will be called at the end of each SMC inference. The callback function below, called <code>fn</code>, must take only keyword arguments (e.g., <code>axes</code>), as well as a varags specifier (<code>kwargs...</code>).  At each SMC step, the callback will be invoked and <code>kwargs</code> will be populated with various quantities, as documented in <a href="../utils.html#AutoGP.Callbacks.make_smc_callback-Tuple{Function, AutoGP.GPModel}"><code>AutoGP.Callbacks.make_smc_callback</code></a>.  Some quantities used below include <code>kwargs[:step]</code>, which is the current SMC step; <code>kwargs[:elapsed]</code>, the total runtime in seconds; <code>kwargs[:model]</code>, which is the inferred <code>GPModel</code> at the current SMC step; <code>kwargs[:ds_next]</code> and <code>kwargs[:y_next]</code>, which are data that will be incorporated future SMC steps.  The observed data so far can be accessed via <code>(kwargs[:model].ds, kwargs[:model].y)</code>.</p><p>In order to generate plots at each step of inference, the signature of <code>fn</code> includes a parameter called <code>axes</code>, which is expected to be a <code>Dict</code> whose keys are integers (SMC steps) and values are <code>PyPlot.Axes</code> objects.  We will plot the in-sample and out-of-sample predictions at each step.</p><pre><code class="language-julia hljs">function fn(; axes::Dict, kwargs...)
+    # Obtain SMC step, current model, and data to-be observed at later SMC steps
+    step = kwargs[:step]
+    model_step = kwargs[:model]
+    ds_next = kwargs[:ds_next]
+    y_next = kwargs[:y_next]
+    
+    # Generate predictions on observed data, to-be observed data, and future data.
+    ds_query = vcat(model_step.ds, ds_next, (20:.1:30))
+    predictions = AutoGP.predict(model_step, ds_query; quantiles=[0.025, 0.975])
+    idx_sort = sortperm(ds_query)
+    
+    # Plot the observed data so far.
+    ax = axes[step]
+    ax.scatter(model_step.ds, model_step.y, marker=&quot;o&quot;, color=&quot;k&quot;, s=10, label=&quot;Observed Data&quot;)    
+    if length(model_step.ds) &gt; 0
+        ax.axvline(maximum(model_step.ds), color=&quot;red&quot;, linestyle=&quot;--&quot;)
+    end
+
+    # Plot predictions on future data.
+    for i=1:AutoGP.num_particles(model_step)
+        subdf = predictions[predictions.particle.==i,:]
+        ax.plot(subdf[idx_sort,:ds], subdf[idx_sort,:y_mean], linewidth=.5, color=&quot;k&quot;)
+        ax.fill_between(
+            subdf[idx_sort,:ds],
+            subdf[idx_sort,&quot;y_0.025&quot;],
+            subdf[idx_sort,&quot;y_0.975&quot;],
+            color=&quot;tab:green&quot;,
+            alpha=.05)
+    end
+    ax.legend(loc=&quot;upper left&quot;)
+    ax.set_title(&quot;Step $(step), Obs $(length(model_step.ds)), Elapsed $(kwargs[:elapsed])&quot;)
+    ax.set_ylim([-100, 100])
+end</code></pre><pre><code class="nohighlight hljs">fn (generic function with 1 method)</code></pre><p>Now that we have defined the callback <code>fn</code> we prepare the overall figure and <code>axes</code> dictionary.  To create the actual callback that will be provided to <a href="../api.html#AutoGP.fit_smc!"><code>AutoGP.fit_smc!</code></a> we use <a href="../utils.html#AutoGP.Callbacks.make_smc_callback-Tuple{Function, AutoGP.GPModel}"><code>AutoGP.Callbacks.make_smc_callback</code></a>.</p><div class="admonition is-info" id="Note-ebb90dd2b0c9907e"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-ebb90dd2b0c9907e" title="Permalink"></a></header><div class="admonition-body"><p>The <code>model</code> argument in the call to <code>make_smc_callback</code> is different than <code>kwargs[:model]</code> in the body of the callback <code>fn</code>.  The former <code>model</code> is obtained by initializing (but not fit fitting) <code>AutoGP.GPModel</code> on the full data in the global scope, whereas <code>kwargs[:model]</code> is a temporary <code>GPModel</code> that has been fitted to the observed data so far.</p></div></div><pre><code class="language-julia hljs"># Prepare the SMC schedule and intermediate plots
+schedule = AutoGP.Schedule.linear_schedule(n, .05)
+nrows = 1 + length(schedule)
+fig, axes = plt.subplots(nrows=nrows, figsize=(6, 4*nrows), tight_layout=true, dpi=100)
+axes = Dict(0=&gt;axes[1], (step=&gt;ax for (step, ax) in zip(schedule, axes[2:end]))...)
+
+# Make the callback function.
+callback_fn = AutoGP.Callbacks.make_smc_callback(fn, model; axes=axes)
+
+# Perform inference.
+AutoGP.fit_smc!(model; schedule=schedule, n_mcmc=10, n_hmc=10, shuffle=false, callback_fn=callback_fn);</code></pre><p><img src="callbacks_files/callbacks_10_0.png" alt="png"/></p><pre><code class="language-julia hljs">for k in AutoGP.covariance_kernels(model);
+    display(k)
+end</code></pre><pre><code class="nohighlight hljs">×
+├── ＋
+│   ├── GE(2.09, 1.32; 0.25)
+│   └── PER(0.57, 0.20; 0.23)
+└── ×
+    ├── LIN(0.16; 0.11, 0.04)
+    └── LIN(0.10; 0.28, 1.18)
+
+
+
+
+×
+├── ＋
+│   ├── GE(2.09, 1.32; 0.25)
+│   └── PER(0.57, 0.20; 0.23)
+└── ×
+    ├── LIN(0.16; 0.11, 0.04)
+    └── LIN(0.10; 0.28, 1.18)
+
+
+
+
+×
+├── ＋
+│   ├── GE(2.09, 1.32; 0.25)
+│   └── PER(0.57, 0.20; 0.23)
+└── ×
+    ├── LIN(0.16; 0.11, 0.04)
+    └── LIN(0.10; 0.28, 1.18)
+
+
+
+
+×
+├── ＋
+│   ├── GE(2.09, 1.32; 0.25)
+│   └── PER(0.57, 0.20; 0.23)
+└── ×
+    ├── LIN(0.16; 0.11, 0.04)
+    └── LIN(0.10; 0.28, 1.18)
+
+
+
+
+×
+├── ＋
+│   ├── GE(2.09, 1.32; 0.25)
+│   └── PER(0.57, 0.20; 0.23)
+└── ×
+    ├── LIN(0.12; 0.19, 0.40)
+    └── LIN(0.10; 0.28, 1.18)
+
+
+
+
+×
+├── ＋
+│   ├── GE(5.19, 1.38; 0.62)
+│   └── PER(0.57, 0.20; 0.23)
+└── ×
+    ├── LIN(0.12; 0.19, 0.40)
+    └── LIN(0.06; 0.16, 0.44)
+
+
+
+
+×
+├── ＋
+│   ├── GE(2.09, 1.32; 0.25)
+│   └── PER(0.57, 0.20; 0.23)
+└── ×
+    ├── LIN(0.12; 0.19, 0.40)
+    └── LIN(0.06; 0.16, 0.44)
+
+
+
+
+×
+├── ＋
+│   ├── GE(2.09, 1.32; 0.25)
+│   └── PER(0.57, 0.20; 0.23)
+└── ×
+    ├── LIN(0.12; 0.19, 0.40)
+    └── LIN(0.10; 0.28, 1.18)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="iclaims.html">« Insurance Claims</a><a class="docs-footer-nextpage" href="decomposition.html">Time Series Decomposition »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Friday 24 October 2025 22:15">Friday 24 October 2025</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
