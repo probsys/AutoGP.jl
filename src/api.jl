@@ -821,6 +821,15 @@ model = AutoGP.GPModel([Date("2025-01-01"), Date("2025-01-02")], [1.0, 2.0])
 serialize("model.autogp", Dict(model))
 loaded_model = AutoGP.GPModel(deserialize("model.autogp"))
 ```
+
+!!! warning
+
+    Users should not directly serialize `GPModel` instances, e.g.,
+    ```
+    serialize("model.autogp", model)
+    model = deserialize("model.autogp")
+    ```
+    The first line will throw `ArgumentError`.
 """
 function Base.Dict(model::GPModel)
     kernels = covariance_kernels(model; reparameterize=false)
