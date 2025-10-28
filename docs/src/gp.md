@@ -35,6 +35,7 @@ AutoGP.GP.eval_cov
 AutoGP.GP.compute_cov_matrix
 AutoGP.GP.compute_cov_matrix_vectorized
 AutoGP.GP.extract_kernel
+AutoGP.GP.split_kernel_sop
 AutoGP.GP.reparameterize
 AutoGP.GP.rescale
 ```

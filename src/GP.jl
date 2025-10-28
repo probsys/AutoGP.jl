@@ -22,6 +22,7 @@ import Distributions
 import LinearAlgebra
 
 using DocStringExtensions
+using Match: @match
 using Parameters: @with_kw
 using Printf: @sprintf
 
@@ -563,6 +564,71 @@ function replace_operand(
     return isnothing(n) ? replace_operand(node) : n
     end
 
+@doc raw"""
+    split_kernel_sop(node::Node, ::Type{T}) where T<:LeafNode
+
+Split `node` ↦ `node_a + node_b` through a sum-of-products interpretation
+of the covariance kernel. All the terms with subkernel of type `T` are
+included only in `node_a` and the rest of the terms are in `node_b`.
+The return value is a tuple `(node_a, node_b)`, where either one
+can be `nothing`.
+
+# Examples
+```
+julia> l = Linear(1); p = Periodic(1,1); c = Constant(1)
+julia> split_kernel_sop(l, Linear)
+(l, nothing)
+julia> split_kernel_sop(l, Periodic)
+(nothing, l)
+julia> split_kernel_sop(l*p + l*c, Periodic)
+(l*p, l*c)
+julia> split_kernel_sop(p*p, Periodic)
+(p*p, nothing)
+```
+"""
+function split_kernel_sop end
+
+has_leaf(node::T, ::Type{T}) where {T<:LeafNode} = true
+has_leaf(node::LeafNode, ::Type{T}) where {T<:LeafNode} = false
+has_leaf(node::BinaryOpNode, ::Type{T}) where {T<:LeafNode} =
+    has_leaf(node.left, T) || has_leaf(node.right, T)
+
+split_kernel_sop(node::T, ::Type{T}) where {T<:LeafNode} = (node, nothing)
+split_kernel_sop(node::LeafNode, ::Type{T}) where {T<:LeafNode} = (nothing, node)
+
+function split_kernel_sop(node::Times, ::Type{T}) where {T<:LeafNode}
+    if has_leaf(node.left, T) || has_leaf(node.right, T)
+        return (node, nothing)
+    else
+        return (nothing, node)
+    end
+end
+
+function split_kernel_sop(node::B, ::Type{T}) where {B<:BinaryOpNode, T <: LeafNode}
+    (left_a, left_b) = split_kernel_sop(node.left, T)
+    (right_a, right_b) = split_kernel_sop(node.right, T)
+    l_sop = merge_split_operand(node, left_a, right_a)
+    r_sop = merge_split_operand(node, left_b, right_b)
+    return (l_sop, r_sop)
+end
+
+# Helper function for split_kernel_sop
+merge_split_operand(node::Plus, node_a, node_b) = @match (node_a, node_b) begin
+    (::Nothing, ::Nothing) => nothing
+    (::Node, ::Nothing)    => node_a
+    (::Nothing, ::Node)    => node_b
+    (::Node, ::Node)       => node_a + node_b
+    _                      => error("Impossible case")
+end
+
+merge_split_operand(node::ChangePoint, node_a, node_b) = @match (node_a, node_b) begin
+    (::Nothing, ::Nothing) => nothing
+    (::Node, ::Nothing)    => ChangePoint(node_a, Constant(0), node.location, node.scale)
+    (::Nothing, ::Node)    => ChangePoint(Constant(0), node_b, node.location, node.scale)
+    (::Node, ::Node)       => ChangePoint(node_a, node_b, node.location, node.scale)
+    _                      => error("Impossible case")
+end
+
 """
     compute_cov_matrix_vectorized(node::Node, noise, ts)
 Compute covariance matrix by evaluating `node` on all pair of `ts`.
@@ -791,6 +857,8 @@ export eval_cov
 export compute_cov_matrix
 export compute_cov_matrix_vectorized
 export unroll
+export extract_kernel
+export split_kernel_sop
 
 export WhiteNoise
 export Constant
