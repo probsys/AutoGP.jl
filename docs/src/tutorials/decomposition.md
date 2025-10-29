@@ -2,11 +2,13 @@
 
 This tutorial shows how to decompose AutoGP models into their constituent temporal components, to gain more insight into the learned time series structures.
 
-We will demonstrate two methods.
+There are many ways to decompose covariance kernels. We will demonstrate three methods:
 
-- [`AutoGP.decompose`](@ref). This function breaks down a composite kernel into its constituent subkernels.
+- [`AutoGP.decompose`](@ref). This function breaks down a composite kernel into the constituent subkernels in the expression tree.
  
 - [`AutoGP.extract_kernel`](@ref). This function extracts a specific primitive kernel from a composite kernel, while discarding the others.
+
+- [`AutoGP.split_kernel_sop`](@ref). This function splits a kernel into a pair of kernels through a sum-of-products interpretation.
 
 
 ```julia
@@ -20,8 +22,6 @@ using Dates
 using DataFrames
 using PythonPlot
 ```
-
-## Loading Data
 
 
 ```julia
@@ -51,18 +51,16 @@ ax.scatter(df_test.ds, df_test.y, marker="o", color="w", edgecolor="k", label="T
 
 
     
-![png](decomposition_files/decomposition_8_0.png)
+![png](decomposition_files/decomposition_7_0.png)
     
 
 
 
 
 
-    Python: <matplotlib.collections.PathCollection object at 0x71fc21baa480>
+    Python: <matplotlib.collections.PathCollection object at 0x713940142a80>
 
 
-
-## Creating an AutoGP Model
 
 
 ```julia
@@ -76,38 +74,9 @@ ds_query = vcat(df_train.ds, df_test.ds, ds_future)
 forecasts = AutoGP.predict(model, ds_query; quantiles=[0.025, 0.975]);
 ```
 
-Let us visualize the forecasts before model fitting. The model clearly underfits the data.
-
 
 ```julia
-fig, ax = PythonPlot.subplots(figsize=(10,4))
-for i=1:AutoGP.num_particles(model)
-    subdf = forecasts[forecasts.particle.==i,:]
-    ax.plot(subdf[!,"ds"], subdf[!,"y_mean"], color="k", linewidth=.25)
-    ax.fill_between(subdf.ds, subdf[!,"y_0.025"], subdf[!,"y_0.975"], color="tab:blue", alpha=0.05)
-end
-ax.scatter(df_train.ds, df_train.y, marker="o", color="k")
-ax.scatter(df_test.ds, df_test.y, marker="o", color="w", edgecolor="k", label="Test Data")
-```
-
-
-    
-![png](decomposition_files/decomposition_13_0.png)
-    
-
-
-
-
-
-    Python: <matplotlib.collections.PathCollection object at 0x71fc1d32ea20>
-
-
-
-## Model Fitting via SMC
-
-
-```julia
-AutoGP.fit_smc!(model; schedule=AutoGP.Schedule.linear_schedule(n_train, .025), n_mcmc=50, n_hmc=25, verbose=false);
+AutoGP.fit_smc!(model; schedule=vcat(collect(range(2, n_train, step=12)), n_train), n_mcmc=100, n_hmc=20, verbose=false);
 ```
 
 
@@ -131,14 +100,14 @@ ax.scatter(df_test.ds, df_test.y, marker="o", color="w", edgecolor="k", label="T
 
 
     
-![png](decomposition_files/decomposition_17_0.png)
+![png](decomposition_files/decomposition_12_0.png)
     
 
 
 
 
 
-    Python: <matplotlib.collections.PathCollection object at 0x71fc17d37290>
+    Python: <matplotlib.collections.PathCollection object at 0x7138acd17d10>
 
 
 
@@ -156,211 +125,341 @@ for (i, (k, w)) in enumerate(zip(kernels, weights))
 end
 ```
 
-    Model 1, Weight 0.09658896969666558
+    Model 1, Weight 0.00901154857652315
 
 
 
-    +
-    ├── PER(0.77, 0.10; 0.03)
-    └── GE(1.79, 1.74; 0.20)
+    ×
+    ├── +
+    │   ├── LIN(659981029.03; 97715.80, 0.00)
+    │   └── LIN(1195212711.94; 560685.09, 0.00)
+    └── +
+        ├── +
+        │   ├── ×
+        │   │   ├── ×
+        │   │   │   ├── ×
+        │   │   │   │   ├── LIN(645756746.98; 0.12, 0.00)
+        │   │   │   │   └── LIN(456367123.42; 0.16, 0.00)
+        │   │   │   └── LIN(567802575.74; 0.04, 0.00)
+        │   │   └── GE(74314112.16, 1.31; 0.38)
+        │   └── PER(1.74, 31698075.82; 0.14)
+        └── LIN(435409162.25; 0.10, 0.00)
 
 
 
-    Model 2, Weight 0.039614762558316634
+    Model 2, Weight 0.019612029584188975
+
+
+
+    ×
+    ├── LIN(553528205.92; 193073.36, 0.00)
+    └── +
+        ├── GE(610350376.93, 1.32; 0.44)
+        └── PER(1.48, 31339381.01; 0.17)
+
+
+
+    Model 3, Weight 0.017007994352312553
 
 
 
     +
     ├── ×
-    │   ├── PER(0.74, 0.10; 0.03)
-    │   └── LIN(0.09; 0.46, 0.02)
-    └── GE(1.41, 1.73; 0.16)
+    │   ├── ×
+    │   │   ├── LIN(466187204.31; 254341.57, 0.00)
+    │   │   └── LIN(883086760.04; 0.22, 0.00)
+    │   └── +
+    │       ├── +
+    │       │   ├── ×
+    │       │   │   ├── GE(72266269.78, 1.63; 0.14)
+    │       │   │   └── LIN(444058228.24; 0.06, 0.00)
+    │       │   └── +
+    │       │       ├── LIN(724687893.47; 0.08, 0.00)
+    │       │       └── LIN(560627320.97; 0.75, 0.00)
+    │       └── PER(1.09, 31585406.18; 0.13)
+    └── LIN(558190191.81; 4095788.70, 0.00)
 
 
 
-    Model 3, Weight 0.06625733864702288
+    Model 4, Weight 0.11069109354255227
 
 
 
     +
-    ├── PER(0.89, 0.10; 0.03)
-    └── GE(1.64, 1.73; 0.12)
+    ├── +
+    │   ├── GE(566952789.69, 1.66; 53807.36)
+    │   └── PER(1.86, 31493709.45; 126071.89)
+    └── LIN(506782708.52; 24208.61, 0.00)
 
 
 
-    Model 4, Weight 0.010545550106178718
+    Model 5, Weight 0.015355520708968496
+
+
+
+    +
+    ├── ×
+    │   ├── ×
+    │   │   ├── LIN(703521266.93; 402680.15, 0.00)
+    │   │   └── LIN(474054605.17; 0.29, 0.00)
+    │   └── +
+    │       ├── ×
+    │       │   ├── LIN(477789221.18; 0.08, 0.00)
+    │       │   └── +
+    │       │       ├── GE(93852771.12, 0.56; 0.04)
+    │       │       └── LIN(445472740.93; 0.11, 0.00)
+    │       └── PER(1.43, 31593348.89; 0.18)
+    └── LIN(559007522.80; 27079.33, 0.00)
+
+
+
+    Model 6, Weight 0.02878043770753873
+
+
+
+    +
+    ├── ×
+    │   ├── ×
+    │   │   ├── LIN(455085567.29; 199889.05, 0.00)
+    │   │   └── LIN(905419786.45; 0.23, 0.00)
+    │   └── +
+    │       ├── ×
+    │       │   ├── LIN(640199044.16; 0.06, 0.00)
+    │       │   └── GE(100589877.05, 1.25; 0.18)
+    │       └── PER(1.43, 31593348.89; 0.18)
+    └── LIN(593954212.76; 301975.24, 0.00)
+
+
+
+    Model 7, Weight 0.014477329933002096
 
 
 
     +
     ├── ×
     │   ├── +
-    │   │   ├── PER(0.73, 0.10; 0.04)
-    │   │   └── LIN(0.12; 0.48, 0.03)
-    │   └── LIN(0.76; 0.05, 0.03)
-    └── GE(1.12, 1.82; 0.09)
+    │   │   ├── LIN(497587817.58; 639968.07, 0.00)
+    │   │   └── LIN(471057791.81; 1253031.98, 0.00)
+    │   └── +
+    │       ├── +
+    │       │   ├── ×
+    │       │   │   ├── ×
+    │       │   │   │   ├── ×
+    │       │   │   │   │   ├── LIN(458436935.16; 0.16, 0.00)
+    │       │   │   │   │   └── +
+    │       │   │   │   │       ├── LIN(610953981.25; 0.16, 0.00)
+    │       │   │   │   │       └── ×
+    │       │   │   │   │           ├── ×
+    │       │   │   │   │           │   ├── LIN(478408274.62; 0.04, 0.00)
+    │       │   │   │   │           │   └── +
+    │       │   │   │   │           │       ├── LIN(574886530.87; 0.32, 0.00)
+    │       │   │   │   │           │       └── LIN(460056017.66; 0.30, 0.00)
+    │       │   │   │   │           └── ×
+    │       │   │   │   │               ├── +
+    │       │   │   │   │               │   ├── +
+    │       │   │   │   │               │   │   ├── LIN(667199694.27; 0.39, 0.00)
+    │       │   │   │   │               │   │   └── ×
+    │       │   │   │   │               │   │       ├── GE(43654821.17, 1.55; 0.30)
+    │       │   │   │   │               │   │       └── +
+    │       │   │   │   │               │   │           ├── LIN(559025780.12; 0.03, 0.00)
+    │       │   │   │   │               │   │           └── ×
+    │       │   │   │   │               │   │               ├── +
+    │       │   │   │   │               │   │               │   ├── PER(0.14, 80045439.57; 0.18)
+    │       │   │   │   │               │   │               │   └── +
+    │       │   │   │   │               │   │               │       ├── +
+    │       │   │   │   │               │   │               │       │   ├── LIN(539688999.60; 0.20, 0.00)
+    │       │   │   │   │               │   │               │       │   └── PER(0.19, 19029757.25; 0.04)
+    │       │   │   │   │               │   │               │       └── ×
+    │       │   │   │   │               │   │               │           ├── ×
+    │       │   │   │   │               │   │               │           │   ├── PER(0.12, 77479085.99; 0.07)
+    │       │   │   │   │               │   │               │           │   └── PER(0.18, 144355664.13; 0.01)
+    │       │   │   │   │               │   │               │           └── GE(44444499.68, 0.71; 0.35)
+    │       │   │   │   │               │   │               └── GE(27066775.64, 1.55; 0.13)
+    │       │   │   │   │               │   └── GE(25937540.58, 1.13; 0.03)
+    │       │   │   │   │               └── PER(0.29, 30436188.75; 0.13)
+    │       │   │   │   └── GE(360706174.03, 1.63; 0.04)
+    │       │   │   └── GE(54699037.16, 1.18; 0.23)
+    │       │   └── PER(2.03, 31575590.50; 0.15)
+    │       └── LIN(578615206.91; 0.97, 0.00)
+    └── LIN(450947315.34; 756380.09, 0.00)
 
 
 
-    Model 5, Weight 0.01043051073070849
+    Model 8, Weight 0.047447926279920595
+
+
+
+    +
+    ├── +
+    │   ├── GE(490829705.72, 1.61; 53891.92)
+    │   └── PER(1.86, 31474242.59; 140799.04)
+    └── +
+        ├── +
+        │   ├── LIN(719928809.88; 140065.50, 0.00)
+        │   └── LIN(450286397.01; 73853.58, 0.00)
+        └── LIN(425778979.01; 283629.75, 0.00)
+
+
+
+    Model 9, Weight 0.010109195479711725
+
+
+
+    ×
+    ├── LIN(510605573.28; 538468.10, 0.00)
+    └── +
+        ├── ×
+        │   ├── +
+        │   │   ├── ×
+        │   │   │   ├── ×
+        │   │   │   │   ├── GE(73592603.05, 1.32; 0.30)
+        │   │   │   │   └── GE(435853766.92, 0.97; 0.18)
+        │   │   │   └── LIN(578736277.07; 0.10, 0.00)
+        │   │   └── LIN(485369591.57; 0.50, 0.00)
+        │   └── LIN(571286497.84; 0.34, 0.00)
+        └── +
+            ├── LIN(472756425.93; 0.15, 0.00)
+            └── PER(1.29, 31481465.66; 0.16)
+
+
+
+    Model 10, Weight 0.00019137991483466764
+
+
+
+    ×
+    ├── LIN(568090873.20; 139939.21, 0.00)
+    └── +
+        ├── ×
+        │   ├── GE(817646585.97, 1.40; 0.50)
+        │   └── +
+        │       ├── LIN(444799222.44; 0.03, 0.00)
+        │       └── LIN(450268972.65; 0.28, 0.00)
+        └── PER(1.24, 31953635.36; 0.17)
+
+
+
+    Model 11, Weight 0.0054314969855522
 
 
 
     +
     ├── ×
-    │   ├── +
-    │   │   ├── PER(0.73, 0.10; 0.04)
-    │   │   └── LIN(0.25; 0.07, 0.24)
-    │   └── LIN(0.76; 0.05, 0.03)
-    └── GE(1.12, 1.82; 0.09)
+    │   ├── ×
+    │   │   ├── LIN(568363450.73; 442906.88, 0.00)
+    │   │   └── LIN(478193065.57; 0.35, 0.00)
+    │   └── +
+    │       ├── GE(129762049.27, 1.64; 0.07)
+    │       └── PER(1.42, 31677669.77; 0.25)
+    └── LIN(479392279.90; 35663.69, 0.00)
 
 
 
-    Model 6, Weight 0.10089196157472988
-
-
-
-    +
-    ├── PER(0.74, 0.10; 0.03)
-    └── +
-        ├── LIN(1.36; 0.15, 0.06)
-        └── GE(1.41, 1.73; 0.16)
-
-
-
-    Model 7, Weight 0.06760101185923048
-
-
-
-    +
-    ├── PER(0.95, 0.10; 0.03)
-    └── GE(1.68, 1.77; 0.21)
-
-
-
-    Model 8, Weight 0.036215946339597245
-
-
-
-    +
-    ├── PER(0.91, 0.10; 0.03)
-    └── +
-        ├── GE(0.78, 1.73; 0.05)
-        └── LIN(0.13; 0.08, 0.07)
-
-
-
-    Model 9, Weight 0.05838021457226862
-
-
-
-    +
-    ├── PER(0.89, 0.10; 0.03)
-    └── GE(1.64, 1.73; 0.12)
-
-
-
-    Model 10, Weight 0.010614087663444665
+    Model 12, Weight 0.0076299623510348
 
 
 
     +
     ├── ×
-    │   ├── +
-    │   │   ├── PER(1.04, 0.10; 0.04)
-    │   │   └── LIN(0.37; 0.07, 1.43)
-    │   └── LIN(0.13; 0.34, 0.06)
-    └── GE(1.62, 1.81; 0.10)
+    │   ├── LIN(794821416.44; 95231.27, 0.00)
+    │   └── +
+    │       ├── GE(212766080.39, 1.53; 0.08)
+    │       └── PER(1.28, 31642882.88; 0.21)
+    └── ×
+        ├── LIN(1501215005.41; 111622.20, 0.00)
+        └── LIN(551494152.52; 0.15, 0.00)
 
 
 
-    Model 11, Weight 0.03466466846299965
+    Model 13, Weight 0.3270158643889261
 
 
 
     +
-    ├── PER(0.91, 0.10; 0.03)
+    ├── +
+    │   ├── GE(308405091.32, 1.55; 46032.60)
+    │   └── PER(1.86, 31474242.59; 140799.04)
+    └── LIN(478990944.11; 87109.72, 0.00)
+
+
+
+    Model 14, Weight 0.08141232858111867
+
+
+
+    +
+    ├── ×
+    │   ├── LIN(468516482.12; 1517671.74, 0.00)
+    │   └── +
+    │       ├── ×
+    │       │   ├── ×
+    │       │   │   ├── ×
+    │       │   │   │   ├── LIN(458383824.50; 0.08, 0.00)
+    │       │   │   │   └── LIN(490260027.05; 0.05, 0.00)
+    │       │   │   └── GE(490829705.72, 1.61; 0.05)
+    │       │   └── GE(67306478.43, 1.19; 0.35)
+    │       └── PER(1.86, 31474242.59; 0.14)
+    └── LIN(611309629.23; 173952.01, 0.00)
+
+
+
+    Model 15, Weight 0.0005021571370656624
+
+
+
+    +
+    ├── +
+    │   ├── ×
+    │   │   ├── LIN(609809419.35; 610124.73, 0.00)
+    │   │   └── +
+    │   │       ├── +
+    │   │       │   ├── ×
+    │   │       │   │   ├── ×
+    │   │       │   │   │   ├── GE(78117685.74, 1.58; 0.04)
+    │   │       │   │   │   └── LIN(617136973.20; 0.35, 0.00)
+    │   │       │   │   └── LIN(556041942.24; 0.27, 0.00)
+    │   │       │   └── LIN(1202344796.78; 0.20, 0.00)
+    │   │       └── PER(1.91, 31684257.18; 0.22)
+    │   └── LIN(424034379.19; 103118.46, 0.00)
+    └── LIN(468608844.61; 212589.52, 0.00)
+
+
+
+    Model 16, Weight 0.2575040599217603
+
+
+
+    +
+    ├── +
+    │   ├── GE(490829705.72, 1.61; 53891.92)
+    │   └── PER(1.86, 31474242.59; 140799.04)
+    └── LIN(527880879.77; 307350.63, 0.00)
+
+
+
+    Model 17, Weight 0.027518336753961727
+
+
+
+    ×
+    ├── LIN(468175029.06; 113767.87, 0.00)
     └── +
-        ├── LIN(0.66; 0.14, 0.42)
-        └── GE(0.78, 1.73; 0.05)
+        ├── +
+        │   ├── LIN(525326031.11; 0.19, 0.00)
+        │   └── GE(320816202.09, 1.73; 0.99)
+        └── +
+            ├── LIN(556245068.01; 0.17, 0.00)
+            └── PER(1.40, 31519222.30; 0.21)
 
 
 
-    Model 12, Weight 0.061442233630051295
-
-
-
-    +
-    ├── LIN(0.40; 0.22, 0.52)
-    └── +
-        ├── PER(0.89, 0.10; 0.03)
-        └── GE(1.64, 1.73; 0.12)
-
-
-
-    Model 13, Weight 0.04688201588759647
+    Model 18, Weight 0.020301337801024034
 
 
 
     +
-    ├── PER(0.95, 0.10; 0.03)
-    └── +
-        ├── LIN(0.49; 0.10, 0.68)
-        └── GE(1.53, 1.71; 0.06)
-
-
-
-    Model 14, Weight 0.07199528556277592
-
-
-
-    +
-    ├── PER(0.67, 0.10; 0.03)
-    └── GE(1.09, 1.71; 0.16)
-
-
-
-    Model 15, Weight 0.039916775290948496
-
-
-
-    +
-    ├── LIN(0.46; 0.03, 0.56)
-    └── +
-        ├── PER(0.91, 0.10; 0.03)
-        └── GE(0.78, 1.73; 0.05)
-
-
-
-    Model 16, Weight 0.06695006913745713
-
-
-
-    +
-    ├── LIN(0.63; 0.13, 0.31)
-    └── +
-        ├── PER(0.89, 0.10; 0.03)
-        └── GE(1.22, 1.69; 0.09)
-
-
-
-    Model 17, Weight 0.09300479594368523
-
-
-
-    +
-    ├── PER(0.74, 0.10; 0.03)
-    └── GE(1.41, 1.73; 0.16)
-
-
-
-    Model 18, Weight 0.08800380233632281
-
-
-
-    +
-    ├── PER(0.67, 0.10; 0.03)
-    └── GE(1.09, 1.71; 0.16)
+    ├── GE(361385655.65, 1.74; 365081.64)
+    └── PER(1.30, 31583405.26; 131132.44)
 
 
 
@@ -426,11 +525,11 @@ fig.suptitle("Decomposition of Learned Model $(idx)", fontsize=18, va="center", 
 
 
     
-![png](decomposition_files/decomposition_25_0.png)
+![png](decomposition_files/decomposition_20_0.png)
     
 
 
-## "STL" Style Decomposition
+## STL Style Decomposition
 
 An alternative approach to decomposing kernels is using [`AutoGP.extract_kernel`](@ref), which retains only a specific primitive kernel while discarding the others. In the following example, we will extract the [`AutoGP.GP.Linear`](@ref), [`AutoGP.GP.Periodic`](@ref), and [`AutoGP.GP.GammaExponential`](@ref) kernels from each learned particle to produce an "STL" style decomposition.
 
@@ -460,11 +559,11 @@ println("Model $(idx) - GE only"); display(AutoGP.covariance_kernels(model_ge)[2
 
 
 
-    +
-    ├── ×
-    │   ├── PER(0.74, 0.10; 0.03)
-    │   └── LIN(0.09; 0.46, 0.02)
-    └── GE(1.41, 1.73; 0.16)
+    ×
+    ├── LIN(553528205.92; 193073.36, 0.00)
+    └── +
+        ├── GE(610350376.93, 1.32; 0.44)
+        └── PER(1.48, 31339381.01; 0.17)
 
 
 
@@ -472,11 +571,11 @@ println("Model $(idx) - GE only"); display(AutoGP.covariance_kernels(model_ge)[2
 
 
 
-    +
-    ├── ×
-    │   ├── CONST(1.00)
-    │   └── LIN(0.09; 0.46, 0.02)
-    └── CONST(0.00)
+    ×
+    ├── LIN(553528205.92; 193073.36, 0.00)
+    └── +
+        ├── CONST(0.00)
+        └── CONST(0.00)
 
 
 
@@ -484,11 +583,11 @@ println("Model $(idx) - GE only"); display(AutoGP.covariance_kernels(model_ge)[2
 
 
 
-    +
-    ├── ×
-    │   ├── PER(0.74, 0.10; 0.03)
-    │   └── CONST(1.00)
-    └── CONST(0.00)
+    ×
+    ├── CONST(985751.12)
+    └── +
+        ├── CONST(0.00)
+        └── PER(1.48, 31339381.01; 0.17)
 
 
 
@@ -496,11 +595,11 @@ println("Model $(idx) - GE only"); display(AutoGP.covariance_kernels(model_ge)[2
 
 
 
-    +
-    ├── ×
-    │   ├── CONST(1.00)
-    │   └── CONST(1.00)
-    └── GE(1.41, 1.73; 0.16)
+    ×
+    ├── CONST(985751.12)
+    └── +
+        ├── GE(610350376.93, 1.32; 0.44)
+        └── CONST(0.00)
 
 
 
@@ -532,7 +631,7 @@ axes[2].set_title("STRUCTURE: GE")
 
 
     
-![png](decomposition_files/decomposition_33_0.png)
+![png](decomposition_files/decomposition_28_0.png)
     
 
 
@@ -540,5 +639,107 @@ axes[2].set_title("STRUCTURE: GE")
 
 
     Python: Text(0.5, 1.0, 'STRUCTURE: GE')
+
+
+
+## Sum-of-Products Decomposition
+
+An third approach to decomposing kernels is using [`AutoGP.split_kernel_sop`](@ref), which is based on a sum-of-products decomposition of kernels.
+
+In particular, we can write any composite covariance kernel $k$ as a sum of $m$ products, where the $i$th term in the sum is a product of $n_i$ terms:
+
+```math
+k = k_{11}k_{12}\cdots k_{1n_1} + k_{21}k_{22}\cdots k_{2n_2} + \dots + k_{m1}k_{m2}\cdots k_{m n_m}.
+```
+
+For a given primitive base kernel, such as `Periodic`, we can rewrite the above expression as
+
+```math
+k = k^{\rm PER} + k^{\rm NOPER},
+```
+
+where $k^{\rm PER}$ contains all addends with a `Periodic` factor, and $k^{\rm NOPER}$ are the addends without a `Periodic` factor.
+
+See [`AutoGP.GP.split_kernel_sop`](@ref) for additional details.
+
+The following function returns a pair of [`AutoGP.GPModel`](@ref) instances based on this decomposition.
+
+
+```julia
+model_a, model_b = AutoGP.split_kernel_sop(model, AutoGP.GP.Periodic);
+```
+
+Here is an example of the decomposition on the 4th particle of `model`.
+
+
+```julia
+idx = 4
+println("Model $(idx) - ALL"); display(AutoGP.covariance_kernels(model)[idx])
+println("Model $(idx) - PER"); display(AutoGP.covariance_kernels(model_a)[idx])
+println("Model $(idx) - NO PER"); display(AutoGP.covariance_kernels(model_b)[idx])
+```
+
+    Model 4 - ALL
+
+
+
+    +
+    ├── +
+    │   ├── GE(566952789.69, 1.66; 53807.36)
+    │   └── PER(1.86, 31493709.45; 126071.89)
+    └── LIN(506782708.52; 24208.61, 0.00)
+
+
+
+    Model 4 - PER
+
+
+
+    PER(1.86, 31493709.45; 126071.89)
+
+
+
+    Model 4 - NO PER
+
+
+
+    +
+    ├── GE(566952789.69, 1.66; 53807.36)
+    └── LIN(506782708.52; 24208.61, 0.00)
+
+
+
+
+```julia
+forecasts_a = AutoGP.predict(model_a, ds_query .+ Day(1); quantiles=[0.025, 0.975]);
+forecasts_b = AutoGP.predict(model_b, ds_query .+ Day(1); quantiles=[0.025, 0.975]);
+```
+
+
+```julia
+fig, axes = PythonPlot.subplots(figsize=(10,14), nrows=2, tight_layout=true)
+for (ax, m, f) in zip(axes, [model_a, model_b], [forecasts_a, forecasts_b])
+    for i=1:AutoGP.num_particles(m)
+        subdf = f[f.particle.==i,:]
+        ax.plot(subdf[!,"ds"], subdf[!,"y_mean"], color="k", linewidth=.5)
+        ax.fill_between(subdf.ds, subdf[!,"y_0.025"], subdf[!,"y_0.975"]; color="tab:blue", alpha=0.05)
+    end
+    ax.scatter(df_train.ds, df_train.y, marker="o", color="k", label="Observed Data")
+    ax.scatter(df_test.ds, df_test.y, marker="o", color="w", edgecolor="k", label="Test Data")
+end
+axes[0].set_title("STRUCTURE: PER")
+axes[1].set_title("STRUCTURE: NO PER")
+```
+
+
+    
+![png](decomposition_files/decomposition_36_0.png)
+    
+
+
+
+
+
+    Python: Text(0.5, 1.0, 'STRUCTURE: NO PER')
 
 

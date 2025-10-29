@@ -561,11 +561,25 @@ function extract_kernel_operand(
 @doc raw"""
     split_kernel_sop(node::Node, ::Type{T}) where T<:LeafNode
 
-Split `node` ↦ `node_a + node_b` through a sum-of-products interpretation
-of the covariance kernel. All the terms with subkernel of type `T` are
-included only in `node_a` and the rest of the terms are in `node_b`.
-The return value is a tuple `(node_a, node_b)`. If `node_a` (or `node_b`)
-contains no subexpression, then sentinel kernel `Constant(0)` is used.
+Splits the kernel $k$ denoted by `node` according to a sum-of-products
+interpretation. In particular, write
+
+```math
+k = k_{11}k_{12}\cdots k_{1n_1} + k_{21}k_{22}\cdots k_{2n_2} + \dots + k_{m1}k_{m2}\cdots k_{m n_m}.
+```
+
+For a given primitive base kernel type `T` we can rewrite the above expression as
+
+```math
+k = k^{\rm T} + k^{\rm nT},
+```
+
+where $k^{\rm T}$ contains all addends with a factor of type `T`, and
+$k^{\rm nT}$ are the addends without a factor of type `T`.
+
+The function returns a pair `(node_a, node_b)` corresponding
+to $k^{\rm T}$ and $k^{\rm nT}$ above, with `Constant(0)` serving
+as the sentinel value.
 
 # Examples
 ```

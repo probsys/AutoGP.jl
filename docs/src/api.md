@@ -142,6 +142,7 @@ AutoGP.covariance_kernels
 AutoGP.observation_noise_variances
 AutoGP.decompose
 AutoGP.extract_kernel
+AutoGP.split_kernel_sop
 ```
 
 ## [Serialization](@id model_serialization)
