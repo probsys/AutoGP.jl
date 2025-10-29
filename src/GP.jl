@@ -22,6 +22,7 @@ import Distributions
 import LinearAlgebra
 
 using DocStringExtensions
+using Match: @match
 using Parameters: @with_kw
 using Printf: @sprintf
 
@@ -525,43 +526,116 @@ If all primitive kernels in `node` are of type `T`, the return value is `Constan
 If `retain=false` then the behavior is flipped: the primitive kernels of type `T`
 are removed, while the others are retained.
 """
-function extract_kernel(node::Node, t::Type{T}; retain::Bool=true) where T<:LeafNode
-    k = replace_kernel(node, t, retain)
+function extract_kernel(node::Node, ::Type{T}; retain::Bool=true) where T<:LeafNode
+    k = extract_kernel_helper(node, T, retain)
     return isnothing(k) ? Constant(0) : k
 end
 
 # Helper function for extract_kernel.
-function replace_kernel end
+function extract_kernel_helper end
 
-function replace_kernel(node::T, ::Type{T}, retain::Bool) where T<:LeafNode
-    return retain ? node : nothing
-end
-
-function replace_kernel(node::LeafNode, ::Type{T}, retain::Bool) where T<:LeafNode
-    return retain ? nothing : node
-end
-
-function replace_kernel(node::BinaryOpNode, t::Type{T}, retain::Bool) where T <: LeafNode
-    l = replace_operand(node, node.left, t, retain)
-    r = replace_operand(node, node.right, t, retain)
+extract_kernel_helper(node::T, ::Type{T}, retain::Bool) where T<:LeafNode = retain ? node : nothing
+extract_kernel_helper(node::LeafNode, ::Type{T}, retain::Bool) where T<:LeafNode = retain ? nothing : node
+function extract_kernel_helper(node::BinaryOpNode, ::Type{T}, retain::Bool) where T <: LeafNode
+    l = extract_kernel_operand(node, node.left, T, retain)
+    r = extract_kernel_operand(node, node.right, T, retain)
     B = typeof(node)
     B(l, r, (getfield(node, f) for f in fieldnames(B)[3:end])...)
 end
 
-# Helper function for replace kernel.
-function replace_operand end
-replace_operand(node::Times)        = Constant(1)
-replace_operand(node::Plus)         = Constant(0)
-replace_operand(node::ChangePoint)  = Constant(0)
-function replace_operand(
+# Helper function for extract_kernel_helper.
+function extract_kernel_operand end
+extract_kernel_operand(node::Times)        = Constant(1)
+extract_kernel_operand(node::Plus)         = Constant(0)
+extract_kernel_operand(node::ChangePoint)  = Constant(0)
+function extract_kernel_operand(
         node::BinaryOpNode,
         child::Node,
-        t::Type{T},
+        ::Type{T},
         retain::Bool,
         ) where T<:LeafNode
-    n = replace_kernel(child, t, retain)
-    return isnothing(n) ? replace_operand(node) : n
+    n = extract_kernel_helper(child, T, retain)
+    return isnothing(n) ? extract_kernel_operand(node) : n
     end
+
+@doc raw"""
+    split_kernel_sop(node::Node, ::Type{T}) where T<:LeafNode
+
+Splits the kernel $k$ denoted by `node` according to a sum-of-products
+interpretation. In particular, write
+
+```math
+k = k_{11}k_{12}\cdots k_{1n_1} + k_{21}k_{22}\cdots k_{2n_2} + \dots + k_{m1}k_{m2}\cdots k_{m n_m}.
+```
+
+For a given primitive base kernel type `T` we can rewrite the above expression as
+
+```math
+k = k^{\rm T} + k^{\rm nT},
+```
+
+where $k^{\rm T}$ contains all addends with a factor of type `T`, and
+$k^{\rm nT}$ are the addends without a factor of type `T`.
+
+The function returns a pair `(node_a, node_b)` corresponding
+to $k^{\rm T}$ and $k^{\rm nT}$ above, with `Constant(0)` serving
+as the sentinel value.
+
+# Examples
+```
+julia> l = Linear(1); p = Periodic(1,1); c = Constant(1)
+julia> split_kernel_sop(l, Linear)
+(l, Constant(0))
+julia> split_kernel_sop(l, Periodic)
+(Constant(0), l)
+julia> split_kernel_sop(l*p + l*c, Periodic)
+(l*p, l*c)
+julia> split_kernel_sop(p*p, Periodic)
+(p*p, Constant(0))
+```
+"""
+function split_kernel_sop(node::Node, ::Type{T}) where {T<:LeafNode}
+    (node_a, node_b) = split_kernel_sop_helper(node, T)
+    node_a = isnothing(node_a) ? Constant(0) : node_a
+    node_b = isnothing(node_b) ? Constant(0) : node_b
+    return (node_a, node_b)
+end
+
+has_leaf(node::T, ::Type{T}) where {T<:LeafNode} = true
+has_leaf(node::LeafNode, ::Type{T}) where {T<:LeafNode} = false
+has_leaf(node::BinaryOpNode, ::Type{T}) where {T<:LeafNode} = has_leaf(node.left, T) || has_leaf(node.right, T)
+
+split_kernel_sop_helper(node::T, ::Type{T}) where {T<:LeafNode} = (node, nothing)
+split_kernel_sop_helper(node::LeafNode, ::Type{T}) where {T<:LeafNode} = (nothing, node)
+
+function split_kernel_sop_helper(node::Times, ::Type{T}) where {T<:LeafNode}
+    return (has_leaf(node.left, T) || has_leaf(node.right, T)) ? (node, nothing) : (nothing, node)
+end
+
+function split_kernel_sop_helper(node::B, ::Type{T}) where {B<:BinaryOpNode, T <: LeafNode}
+    (left_a, left_b) = split_kernel_sop_helper(node.left, T)
+    (right_a, right_b) = split_kernel_sop_helper(node.right, T)
+    l_sop = merge_split_operand(node, left_a, right_a)
+    r_sop = merge_split_operand(node, left_b, right_b)
+    return (l_sop, r_sop)
+end
+
+# Helper function for split_kernel_sop_helper
+merge_split_operand(node::Plus, node_a, node_b) = @match (node_a, node_b) begin
+    (::Nothing, ::Nothing) => nothing
+    (::Node, ::Nothing)    => node_a
+    (::Nothing, ::Node)    => node_b
+    (::Node, ::Node)       => node_a + node_b
+    _                      => error("Impossible case")
+end
+
+merge_split_operand(node::ChangePoint, node_a, node_b) = @match (node_a, node_b) begin
+    (::Nothing, ::Nothing) => nothing
+    (::Node, ::Nothing)    => ChangePoint(node_a, Constant(0), node.location, node.scale)
+    (::Nothing, ::Node)    => ChangePoint(Constant(0), node_b, node.location, node.scale)
+    (::Node, ::Node)       => ChangePoint(node_a, node_b, node.location, node.scale)
+    _                      => error("Impossible case")
+end
 
 """
     compute_cov_matrix_vectorized(node::Node, noise, ts)
@@ -791,6 +865,8 @@ export eval_cov
 export compute_cov_matrix
 export compute_cov_matrix_vectorized
 export unroll
+export extract_kernel
+export split_kernel_sop
 
 export WhiteNoise
 export Constant

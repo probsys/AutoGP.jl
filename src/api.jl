@@ -720,7 +720,7 @@ series structures that make up each particle of `model`.
 
 # See also
 
-[Time Series Decomposition Tutorial](./tutorials/decomposition.html)
+- [Time Series Decomposition Tutorial](./tutorials/decomposition.html)
 """
 function decompose(model::GPModel)
     kernels = covariance_kernels(model; reparameterize=false)
@@ -732,6 +732,8 @@ function decompose(model::GPModel)
     #         :noise,
     #         [trace[:noise] for trace in model.pf_state.traces],)
     #     .+ AutoGP.Model.JITTER
+    #
+    # TODO: Use GPModel(model, kernels) instead of duplicating here.
     for (i, kernel_list::Vector{GP.Node}) in enumerate(unrolled)
         # ERROR: type GPConfig has no field WhiteNoise
         # Add observation noise as a WhiteNoise kernel.
@@ -782,24 +784,58 @@ retained.
 
 # See also
 
-- [Time Series Decomposition Tutorial](./tutorials/decomposition.html)
 - [`AutoGP.GP.extract_kernel`](@ref)
+- [Time Series Decomposition Tutorial](./tutorials/decomposition.html)
 """
 function extract_kernel(model::GPModel, t::Type{T}; retain::Bool=true) where T <: GP.LeafNode
     kernels = covariance_kernels(model; reparameterize=false)
     new_kernels = [GP.extract_kernel(kernel, t; retain=retain) for kernel in kernels]
     # TODO: Should we use zero noise or current noise?
+    return GPModel(model, new_kernels)
+end
+
+
+"""
+    split_kernel_sop(model::GPModel, ::Type{T}) where {T <: GP.LeafNode}
+
+Decompose the kernels in `model` through a sum-of-products interpretation.
+Each kernel `k` in `model` is split as `k1 + k2`, where `k1` contains all
+the factors with subkernel of type `T` and the rest of the terms are in
+`k2`. The sentinel addend of `Constant(0)` is used whenever `k1` or `k2` is
+empty.
+
+
+The return value is a tuple `(model_a::GPModel, model_b::GPModel)` where
+`model_a` contains all the `k1` kernels and `model_b` contains all the `k2`
+kernels.
+
+# See also
+
+- [`AutoGP.GP.split_kernel_sop`](@ref)
+- [Time Series Decomposition Tutorial](./tutorials/decomposition.html)
+"""
+function split_kernel_sop(model::GPModel, ::Type{T}) where {T <: GP.LeafNode}
+    kernels = covariance_kernels(model; reparameterize=false)
+    split_kernels = [GP.split_kernel_sop(kernel, T) for kernel in kernels]
+    split_kernels_a, split_kernels_b = zip(split_kernels...)
+    model_a = GPModel(model, collect(split_kernels_a))
+    model_b = GPModel(model, collect(split_kernels_b))
+    return (model_a, model_b)
+end
+
+function GPModel(model::GPModel, kernels::Vector{<:GP.Node})
+    @assert length(kernels) == num_particles(model)
     new_model = GPModel(
-            model.ds, model.y;
-            n_particles=num_particles(model),
-            config=model.config)
+        model.ds, model.y;
+        n_particles=num_particles(model),
+        config=model.config)
     # Copy transforms, since add_data! may have been called on model.
     new_model.ds_transform = model.ds_transform
     new_model.y_transform = model.y_transform
     # Force update each particle to match the kernel fragment.
     for (i, trace) in enumerate(new_model.pf_state.traces)
         new_model.pf_state.traces[i] =
-            Inference.node_to_trace(new_kernels[i], model.pf_state.traces[i])
+            Inference.node_to_trace(kernels[i], model.pf_state.traces[i])
     end
     # Force update the weights.
     new_model.pf_state.log_weights = model.pf_state.log_weights
