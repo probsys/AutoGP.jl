@@ -109,29 +109,31 @@ end # @testset "rescale"
     p = GP.Periodic(1,1)
     g = GP.GammaExponential(1, 1)
 
+    sentinel = GP.Constant(0)
+
     # Verify base kernels.
     for b in get_reparam_base_kernels()
-      @test GP.split_kernel_sop(b, typeof(b)) == (b, nothing)
+      @test GP.split_kernel_sop(b, typeof(b)) == (b, sentinel)
       for j in get_reparam_base_kernels()
         if b != j
-          @test GP.split_kernel_sop(b, typeof(j)) == (nothing, b)
+          @test GP.split_kernel_sop(b, typeof(j)) == (sentinel, b)
         end
       end
     end
 
     @test GP.split_kernel_sop(l*l + p*l + g*w, GP.Linear) == (l*l+p*l, g*w)
-    @test GP.split_kernel_sop(l*(l+p+g), GP.Periodic) == (l*(l+p+g), nothing)
+    @test GP.split_kernel_sop(l*(l+p+g), GP.Periodic) == (l*(l+p+g), sentinel)
 
     k = GP.ChangePoint(p*l+l, p*p+g, 1,1)
-    @test GP.split_kernel_sop(k, GP.WhiteNoise) == (nothing, k)
+    @test GP.split_kernel_sop(k, GP.WhiteNoise) == (sentinel, k)
     @test GP.split_kernel_sop(k, GP.GammaExponential) == (
-            GP.ChangePoint(GP.Constant(0), g, 1,1),
+            GP.ChangePoint(sentinel, g, 1,1),
             GP.ChangePoint(p*l+l, p*p, 1, 1))
 
     k = GP.ChangePoint(l, p, 1, 1)
-    @test GP.split_kernel_sop(k, GP.WhiteNoise) == (nothing, k)
+    @test GP.split_kernel_sop(k, GP.WhiteNoise) == (sentinel, k)
     @test GP.split_kernel_sop(k, GP.Linear) == (
-            GP.ChangePoint(l, GP.Constant(0), 1,1),
-            GP.ChangePoint(GP.Constant(0), p, 1, 1))
+            GP.ChangePoint(l, sentinel, 1,1),
+            GP.ChangePoint(sentinel, p, 1, 1))
 
 end # @testset "split_kernel_sop"
