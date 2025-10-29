@@ -526,42 +526,36 @@ If all primitive kernels in `node` are of type `T`, the return value is `Constan
 If `retain=false` then the behavior is flipped: the primitive kernels of type `T`
 are removed, while the others are retained.
 """
-function extract_kernel(node::Node, t::Type{T}; retain::Bool=true) where T<:LeafNode
-    k = replace_kernel(node, t, retain)
+function extract_kernel(node::Node, ::Type{T}; retain::Bool=true) where T<:LeafNode
+    k = extract_kernel_helper(node, T, retain)
     return isnothing(k) ? Constant(0) : k
 end
 
 # Helper function for extract_kernel.
-function replace_kernel end
+function extract_kernel_helper end
 
-function replace_kernel(node::T, ::Type{T}, retain::Bool) where T<:LeafNode
-    return retain ? node : nothing
-end
-
-function replace_kernel(node::LeafNode, ::Type{T}, retain::Bool) where T<:LeafNode
-    return retain ? nothing : node
-end
-
-function replace_kernel(node::BinaryOpNode, t::Type{T}, retain::Bool) where T <: LeafNode
-    l = replace_operand(node, node.left, t, retain)
-    r = replace_operand(node, node.right, t, retain)
+extract_kernel_helper(node::T, ::Type{T}, retain::Bool) where T<:LeafNode = retain ? node : nothing
+extract_kernel_helper(node::LeafNode, ::Type{T}, retain::Bool) where T<:LeafNode = retain ? nothing : node
+function extract_kernel_helper(node::BinaryOpNode, ::Type{T}, retain::Bool) where T <: LeafNode
+    l = extract_kernel_operand(node, node.left, T, retain)
+    r = extract_kernel_operand(node, node.right, T, retain)
     B = typeof(node)
     B(l, r, (getfield(node, f) for f in fieldnames(B)[3:end])...)
 end
 
-# Helper function for replace kernel.
-function replace_operand end
-replace_operand(node::Times)        = Constant(1)
-replace_operand(node::Plus)         = Constant(0)
-replace_operand(node::ChangePoint)  = Constant(0)
-function replace_operand(
+# Helper function for extract_kernel_helper.
+function extract_kernel_operand end
+extract_kernel_operand(node::Times)        = Constant(1)
+extract_kernel_operand(node::Plus)         = Constant(0)
+extract_kernel_operand(node::ChangePoint)  = Constant(0)
+function extract_kernel_operand(
         node::BinaryOpNode,
         child::Node,
-        t::Type{T},
+        ::Type{T},
         retain::Bool,
         ) where T<:LeafNode
-    n = replace_kernel(child, t, retain)
-    return isnothing(n) ? replace_operand(node) : n
+    n = extract_kernel_helper(child, T, retain)
+    return isnothing(n) ? extract_kernel_operand(node) : n
     end
 
 @doc raw"""
@@ -570,20 +564,20 @@ function replace_operand(
 Split `node` ↦ `node_a + node_b` through a sum-of-products interpretation
 of the covariance kernel. All the terms with subkernel of type `T` are
 included only in `node_a` and the rest of the terms are in `node_b`.
-The return value is a tuple `(node_a, node_b)`, where either one
-can be `nothing`.
+The return value is a tuple `(node_a, node_b)`. If `node_a` (or `node_b`)
+contains no subexpression, then sentinel kernel `Constant(0)` is used.
 
 # Examples
 ```
 julia> l = Linear(1); p = Periodic(1,1); c = Constant(1)
 julia> split_kernel_sop(l, Linear)
-(l, nothing)
+(l, Constant(0))
 julia> split_kernel_sop(l, Periodic)
-(nothing, l)
+(Constant(0), l)
 julia> split_kernel_sop(l*p + l*c, Periodic)
 (l*p, l*c)
 julia> split_kernel_sop(p*p, Periodic)
-(p*p, nothing)
+(p*p, Constant(0))
 ```
 """
 function split_kernel_sop(node::Node, ::Type{T}) where {T<:LeafNode}
@@ -595,18 +589,13 @@ end
 
 has_leaf(node::T, ::Type{T}) where {T<:LeafNode} = true
 has_leaf(node::LeafNode, ::Type{T}) where {T<:LeafNode} = false
-has_leaf(node::BinaryOpNode, ::Type{T}) where {T<:LeafNode} =
-    has_leaf(node.left, T) || has_leaf(node.right, T)
+has_leaf(node::BinaryOpNode, ::Type{T}) where {T<:LeafNode} = has_leaf(node.left, T) || has_leaf(node.right, T)
 
 split_kernel_sop_helper(node::T, ::Type{T}) where {T<:LeafNode} = (node, nothing)
 split_kernel_sop_helper(node::LeafNode, ::Type{T}) where {T<:LeafNode} = (nothing, node)
 
 function split_kernel_sop_helper(node::Times, ::Type{T}) where {T<:LeafNode}
-    if has_leaf(node.left, T) || has_leaf(node.right, T)
-        return (node, nothing)
-    else
-        return (nothing, node)
-    end
+    return (has_leaf(node.left, T) || has_leaf(node.right, T)) ? (node, nothing) : (nothing, node)
 end
 
 function split_kernel_sop_helper(node::B, ::Type{T}) where {B<:BinaryOpNode, T <: LeafNode}
