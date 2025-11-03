@@ -69,6 +69,7 @@ AutoGP.GP.ChangePoint
 ```@docs
 AutoGP.Distributions.MvNormal
 AutoGP.Distributions.quantile
+AutoGP.GP.infer_gp_sum
 ```
 
 
