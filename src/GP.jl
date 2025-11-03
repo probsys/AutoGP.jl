@@ -717,6 +717,249 @@ function Distributions.MvNormal(
     return Distributions.MvNormal(conditional_mu, conditional_cov_matrix)
 end
 
+JITTER = 1e-4
+
+using LinearAlgebra, Distributions
+
+"""
+    dist = Distributions.MvNormal(
+        nodes::Vector{Node},
+        noise::Float64,
+        ts::Vector{Float64},
+        xs::Vector{Float64},
+        ts_pred::Vector{Float64};
+        noise_pred::Union{Nothing,Float64}=nothing)
+
+Return [`MvNormal`](https://juliastats.org/Distributions.jl/stable/multivariate/#Distributions.MvNormal)
+posterior predictive distribution over `xs_pred` at time indexes `ts_pred`,
+given noisy observations `[ts, xs]` and covariance function `node` with
+given level of observation `noise`.
+
+By default, the observation noise (`noise_pred`) of the new data is equal to
+the `noise` of the observed data; use `noise_pred = 0.` to obtain the
+predictive distribution over noiseless future values.
+
+# See also
+- To compute log probabilities, [`Distributions.logpdf`](https://juliastats.org/Distributions.jl/v0.24/multivariate/#Distributions.logpdf-Tuple{MultivariateDistribution{S}%20where%20S%3C:ValueSupport,%20AbstractArray})
+- To generate samples, [`Base.rand`](https://juliastats.org/Distributions.jl/stable/multivariate/#Base.rand-Tuple{AbstractRNG,%20MultivariateDistribution})
+- To compute quantiles, [`Distributions.quantile`](@ref)
+"""
+function Distributions.MvNormal(
+        nodes::Vector{Node},
+        noise::Float64,
+        ts::Vector{Float64},
+        xs::Vector{Float64},
+        ts_pred::Vector{Float64};
+        noise_pred::Union{Nothing,Float64}=nothing)
+
+    m = length(nodes)
+    n = length(ts)
+    p = length(ts_pred)
+    noise_pred = isnothing(noise_pred) ? noise : noise_pred
+
+    # Covariance matrix for each component.
+    Ktt  = Vector{AbstractMatrix{Float64}}(undef, m)        # K(T, T)
+    Ktp  = Vector{AbstractMatrix{Float64}}(undef, m)        # K(T, T*)
+    Kpp  = Vector{AbstractMatrix{Float64}}(undef, m)        # K(T*, T*)
+    for i in 1:m
+        Ki = compute_cov_matrix_vectorized(nodes[i], 0, vcat(ts, ts_pred))
+        @views Ktt[i] = Ki[1:n,1:n]
+        @views Ktp[i] = Ki[1:n,n+1:n+p]
+        @views Kpp[i] = Ki[n+1:n+p,n+1:n+p]
+        # Symmetrize for numerical stability.
+        Ktt[i] = 0.5*(Ktt[i] + Ktt[i]')
+        Kpp[i] = 0.5*(Kpp[i] + Kpp[i]')
+    end
+
+    # Covariance matrix for observable sum.
+    S_tt = zeros(n,n)                           # S(T,T)    = Σᵢ Kᵢ(T,T)
+    S_tp = zeros(n,p)                           # S(T,T)    = Σᵢ Kᵢ(T,T*)
+    S_pp = zeros(p,p)                           # S(T*,T*)  = Σᵢ Kᵢ(T*,T*)
+    for i in 1:m;
+        S_tt .+= Ktt[i]
+        S_tp .+= Ktp[i]
+        S_pp .+= Kpp[i]
+    end
+    S = S_tt + noise * LinearAlgebra.I         # S = S(T,T) + ηI
+    S_chol = cholesky(iszero(S) ? zeros(0,0) : Hermitian(S); check=false)
+
+    # Shared solve for S⁻¹ xs.
+    invS_xs = S_chol \ xs                      # invS_xs = S⁻¹ xs
+
+    # Means for latents.
+    mean_f = zeros(m*(n+p))                     # μ = [μ₁, …, μₘ]
+    for i in 1:m
+        mean_fT = Ktt[i] * invS_xs             # μᵢ(T)  = Kᵢ(T,T)  S⁻¹ xs
+        mean_fP = Ktp[i]' * invS_xs            # μᵢ(T*) = Kᵢ(T*,T) S⁻¹ xs
+        # Write the block.
+        offset = (i-1)*(n+p)
+        @views mean_f[offset+1:offset+n] .= mean_fT
+        @views mean_f[offset+n+1:offset+n+p] .= mean_fP
+    end
+
+    # UNSTABLE
+    # Shared solves for S⁻¹ Kᵢ(T,T) and S⁻¹ Kᵢ(T,T*)
+    invS_Ktt = Vector{Matrix{Float64}}(undef, m)
+    invS_Ktp = Vector{Matrix{Float64}}(undef, m)
+    for j in 1:m
+        invS_Ktt[j] = S_chol \ Ktt[j]               # S⁻¹ Kᵢ(T,T)
+        invS_Ktp[j] = S_chol \ Ktp[j]               # S⁻¹ Kᵢ(T,T*)
+    end
+
+    # Full latent covariance cov_Xl, stacked by [fi(T); fi(T*), i=1:m].
+    d = m*(n+p)
+    cov_f = zeros(d, d)
+    for i=1:m, j=1:m
+        # Cov[fᵢ(T), fⱼ(T)]     = 1[i==j]Kᵢ(T,T)   - Kᵢ(T,T)  ⋅ S⁻¹ Kⱼ(T,T)
+        # Cov[fᵢ(T), fⱼ(T*)]    = 1[i==j]Kᵢ(T,T*)  - Kᵢ(T,T)  ⋅ S⁻¹ Kⱼ(T,T*)
+        # Cov[fᵢ(T*), fⱼ(T*)]   = 1[i==j]Kᵢ(T*,T*) - Kᵢ(T,T*) ⋅ S⁻¹ Kⱼ(T,T*)
+        CTT = (i==j ? Ktt[i] : zeros(n,n)) .- Ktt[i]  * invS_Ktt[j]
+        CTP = (i==j ? Ktp[i] : zeros(n,p)) .- Ktt[i]  * invS_Ktp[j]
+        CPP = (i==j ? Kpp[i] : zeros(p,p)) .- Ktp[i]' * invS_Ktp[j]
+        # Write the block.
+        oi = (i-1)*(n+p); oj = (j-1)*(n+p)
+        @views cov_f[oi+1:oi+n,     oj+1:oj+n]       .= CTT
+        @views cov_f[oi+1:oi+n,     oj+n+1:oj+n+p]   .= CTP
+        @views cov_f[oi+n+1:oi+n+p, oj+n+1:oj+n+p]   .= CPP
+        @views cov_f[oi+n+1:oi+n+p, oj+1:oj+n]       .= CTP'   # Symmetry
+    end
+    cov_f = 0.5*(cov_f + cov_f')
+    f = MvNormal(mean_f, cov_f + JITTER * LinearAlgebra.I)
+
+    # Predictive distribution for X(T*) = Σ_i f_i(T*) + ε*, Var[ε*] = η
+    #   mean = S(T*,T) ⋅ S⁻¹ xs
+    #   cov = S(T*,T*) - S(T*,T) ⋅ S⁻¹ S(T,T*) + ηI
+    mean_Xp = S_tp' * invS_xs
+    cov_Xp  = S_pp - S_tp' * (S_chol \ S_tp)
+    cov_Xp  = 0.5*(cov_Xp + cov_Xp')
+    cov_Xp  = cov_Xp + noise_pred * LinearAlgebra.I
+    Xp = MvNormal(mean_Xp, cov_Xp + JITTER * LinearAlgebra.I)
+
+    return (latents=f, y_pred=Xp)
+end
+
+
+using LinearAlgebra, Distributions
+
+"""
+Stack order (prior): [f1(T); f1(T*); …; fm(T); fm(T*); y(T); y(T*)]
+Condition on y(T) = xs.
+Return:
+  post = MvNormal over [f1(T); f1(T*); …; fm(T); fm(T*); y(T*)] | y(T)=xs
+  inds = ranges to extract each block from `post`
+"""
+function posterior_all_given_y!(
+        nodes::Vector{Node},
+        noise::Float64,
+        ts::Vector{Float64},
+        xs::Vector{Float64},
+        ts_pred::Vector{Float64};
+        noise_pred::Union{Nothing,Float64}=nothing)
+
+    m = length(nodes)
+    n = length(ts)
+    p = length(ts_pred)
+    noise_pred = isnothing(noise_pred) ? noise : noise_pred
+
+    # Joint blocks for Cov[fᵢ(T,T*)]
+    Ktt  = Vector{AbstractMatrix{Float64}}(undef, m)   # K_i(T,T)
+    Ktp  = Vector{AbstractMatrix{Float64}}(undef, m)   # K_i(T,T*)
+    Kpp  = Vector{AbstractMatrix{Float64}}(undef, m)   # K_i(T*,T*)
+    for i in 1:m
+        Ki = compute_cov_matrix_vectorized(nodes[i], 0.0, vcat(ts, ts_pred))
+        @views Ktt[i] = Ki[1:n, 1:n]
+        @views Ktp[i] = Ki[1:n, n+1:n+p]
+        @views Kpp[i] = Ki[n+1:n+p, n+1:n+p]
+        # Symmetrize for numerical stability.
+        Ktt[i] = 0.5*(Ktt[i] + Ktt[i]')
+        Kpp[i] = 0.5*(Kpp[i] + Kpp[i]')
+    end
+
+    # Sums for y-blocks.
+    S_tt = zeros(n,n);  S_tp = zeros(n,p);  S_pp = zeros(p,p)
+    for i in 1:m
+        S_tt .+= Ktt[i]
+        S_tp .+= Ktp[i]
+        S_pp .+= Kpp[i]
+    end
+
+    # Full prior Σ over Z = [f₁(T); f₁(T*); …; fₘ(T); fₘ(T*); y(T); y(T*)]
+    d_lat = m*(n+p)
+    d_obs = n + p
+    d_all = d_lat + d_obs
+    Σ = zeros(d_all, d_all)
+
+    # Offsets for the chosen stacking
+    offset(i) = (i-1)*(n+p)
+    yT = d_lat .+ (1:n)
+    yP = d_lat .+ n .+ (1:p)
+
+    # Fill latent diagonal blocks fᵢ(T,T*) and cross with [y(T), y(T*)]
+    for i in 1:m
+        o  = offset(i)
+        lT = o .+ (1:n)             # latent at T
+        lP = o .+ (n .+ (1:p))      # latent at P
+
+        # Cov[fᵢ(T,T*)]
+        @views Σ[lT, lT] .= Ktt[i]
+        @views Σ[lT, lP] .= Ktp[i]
+        @views Σ[lP, lT] .= Ktp[i]'
+        @views Σ[lP, lP] .= Kpp[i]
+
+        # Cov[fᵢ(T, T*), y(T)]
+        # - Cov[fᵢ(T,T), y(T)] = Ktt[i]
+        # - Cov[fᵢ(T*), y(T)]  = Ktp[i]'
+        @views Σ[lT, yT] .= Ktt[i];   @views Σ[yT, lT] .= Ktt[i]'
+        @views Σ[lP, yT] .= Ktp[i]';  @views Σ[yT, lP] .= Ktp[i]
+
+        # Cov[fᵢ(T, T*), y(T)]
+        # - Cov[fᵢ(T,T), y(T*)]  = Ktp[i]
+        # - Cov[fᵢ(T,T*), y(T*)] = Kpp[i]
+        @views Σ[lT, yP] .= Ktp[i];   @views Σ[yP, lT] .= Ktp[i]'
+        @views Σ[lP, yP] .= Kpp[i];   @views Σ[yP, lP] .= Kpp[i]'
+    end
+
+    # Cov[y(T,T*)]
+    @views Σ[yT, yT] .= S_tt + noise*I
+    @views Σ[yT, yP] .= S_tp
+    @views Σ[yP, yT] .= S_tp'
+    @views Σ[yP, yP] .= S_pp + noise_pred*I
+
+    # Impose symmetry.
+    Σ = 0.5*(Σ + Σ')
+
+    # Condition on y(T) = xs. Partition z = [a; b] with b ≡ y(T).
+    keep = vcat(1:d_lat, yP)  # indices for a = [all latents; y(T*)]
+    b    = yT                 # indices for b = y(T)
+
+    @views Σ_aa = Σ[keep, keep]
+    @views Σ_ab = Σ[keep, b]
+    @views Σ_bb = Σ[b, b]
+    @views Σ_ba = Σ[b, keep]
+
+    # Inference via Schur complement.
+    F = cholesky(Hermitian(Σ_bb); check=false)     # Σ_bb = S_tt + noise*I
+    μ_a = Σ_ab * (F \ xs)                          # Posterior mean
+    Σ_a = Σ_aa - Σ_ab * (F \ Σ_ba)                 # Posterior covariance
+    Σ_a = Symmetric(0.5*(Σ_a + Σ_a'))              # Symmetry
+    post = MvNormal(μ_a, Σ_a + JITTER * I)
+
+    # Ranges for extraction from post
+    fT = Vector{UnitRange{Int}}(undef, m)
+    fP = Vector{UnitRange{Int}}(undef, m)
+    for i in 1:m
+        base = (i-1)*(n+p)
+        fT[i] = (base+1):(base+n)
+        fP[i] = (base+n+1):(base+n+p)
+    end
+    yP_rng = (d_lat+1):(d_lat+p)
+    indexes = (fT=fT, fP=fP, yP=yP_rng)
+
+    return (post=post, indexes=indexes)
+end
+
+
+
 """
     Distributions.quantile(dist::Distributions.MvNormal, p)
 Compute quantiles of marginal distributions of `dist`.
