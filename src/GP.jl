@@ -26,6 +26,10 @@ using Match: @match
 using Parameters: @with_kw
 using Printf: @sprintf
 
+using LinearAlgebra: cholesky
+using LinearAlgebra: Hermitian
+using LinearAlgebra: Symmetric
+
 import Gen
 
 """
@@ -739,7 +743,7 @@ function Distributions.MvNormal(
     return Distributions.MvNormal(conditional_mu, conditional_cov_matrix)
 end
 
-JITTER = 1e-4
+JITTER = 1e-8
 
 @doc raw"""
 
@@ -933,9 +937,9 @@ function infer_gp_sum(
     # Impose symmetry.
     Σ = 0.5*(Σ + Σ')
 
-    # Condition on y(T) = xs. Partition z = [a; b] with b ≡ y(T).
-    keep = vcat(1:d_lat, xP)  # indices for a = [all latents; y(T*)]
-    b    = xT                 # indices for b = y(T)
+    # Condition on y(T) = xs. Partition z = [a; b] with b = X(T).
+    keep = vcat(1:d_lat, xP)  # indices for a = [F(T,T*); X(T*)]
+    b    = xT                 # indices for b = X(T)
 
     @views Σ_aa = Σ[keep, keep]
     @views Σ_ab = Σ[keep, b]
@@ -946,10 +950,10 @@ function infer_gp_sum(
     F = cholesky(Hermitian(Σ_bb); check=false)     # Σ_bb = S_tt + noise*I
     μ_a = Σ_ab * (F \ xs)                          # Posterior mean
     Σ_a = Σ_aa - Σ_ab * (F \ Σ_ba)                 # Posterior covariance
-    Σ_a = Symmetric(0.5*(Σ_a + Σ_a'))              # Symmetry
+    Σ_a = Symmetric(0.5*(Σ_a + Σ_a'))              # Impose symmetry
     mvn = Distributions.MvNormal(μ_a, Σ_a + JITTER * LinearAlgebra.I)
 
-    # Ranges for extraction from mvn
+    # Ranges for extraction from mvn.
     fT = Vector{UnitRange{Int}}(undef, m)
     fP = Vector{UnitRange{Int}}(undef, m)
     for i in 1:m
