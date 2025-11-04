@@ -769,68 +769,95 @@ Suppose we can observe the noisy sum of these latent GP functions:
 
 ```math
 \begin{aligned}
-X(t) &= \sum_{i=1}^{m} F_i(t) + \varepsilon(t) \\
-X &\sim \mathrm{GP}(0, k_1 + \dots + k_m + \eta).
+X(t) = \sum_{i=1}^{m} F_i(t) + \varepsilon(t)
+&&
+X \sim \mathrm{GP}(0, k_1 + \dots + k_m + \eta).
 \end{aligned}
 ```
 
-Given a set of observed points $(\mathbf{t}, x(\mathbf{t}))$ and a set
-of test points $\mathbf{t}^*$, this function computes the joint
+Given observed data $(\mathbf{t}, x(\mathbf{t}))$ and
+test points $\mathbf{t}^*$, this function computes the joint
 multivariate normal posterior over all unknown components
 
 ```math
-\left[F_1(\mathbf{t}), F_1(\mathbf{t}^*), \dots, F_m(\mathbf{t}), F_m(\mathbf{t}^*), X(\mathbf{t}^*) \right] \mid X(\mathbf{t})=x(\mathbf{t}).
+\left[F_1(\mathbf{t}^*), \dots, F_m(\mathbf{t}^*), X(\mathbf{t}^*) \right]
+    \mid X(\mathbf{t})=x(\mathbf{t}).
 ```
 
-Inference is performed using the fact that the overall system is a
-multivariate Gaussian with a block diagonal structure
+Inference is performed on the multivariate Gaussian system,
+which has a block diagonal structure
 
 ```math
 \begin{aligned}
 Z \coloneqq
     \begin{bmatrix}
-        F_1(\mathbf{t})\\
-        F_1(\mathbf{t}^*)\\
-        \vdots \\
-        F_m(\mathbf{t})\\
-        F_m(\mathbf{t}^*)\\
-        X(\mathbf{t})\\
-        X(\mathbf{t}^*)
+        F_1(\mathbf{t}^*)   \\
+        \vdots              \\
+        F_m(\mathbf{t}^*)   \\
+        X(\mathbf{t}^*)     \\
+        X(\mathbf{t})
     \end{bmatrix},
 &&
 Z \sim \mathrm{MultivariteNormal}
     \left(
         \mathbf{0},
         \begin{bmatrix}
-            \mathrm{blkdiag}(B_1,\dots,B_m) & C \\
-            C^\top & D \\
+            \Sigma_{aa} & \Sigma_{ab} \\
+            \Sigma_{ba} & \Sigma_{bb}
         \end{bmatrix}\right),
 \end{aligned}
 ```
 where
 ```math
-\begin{gather*}
-B_i \coloneqq \begin{bmatrix}
-            k_i(\mathbf{t},\mathbf{t}^*) & k_i(\mathbf{t},\mathbf{t}^*) \\
-            k_i(\mathbf{t}^*,\mathbf{t}) & k_i(\mathbf{t}^*,\mathbf{t}^*) \\
-    \end{bmatrix} \quad (1 \le i \le m),
-\\[10pt]
-C \coloneqq \begin{bmatrix}
-    k_1(\mathbf{t}, \mathbf{t}) & k_1(\mathbf{t}, \mathbf{t}^*) \\
-    k_1(\mathbf{t}^*, \mathbf{t}) & k_1(\mathbf{t}^*, \mathbf{t}^*) \\
-    \vdots & \vdots \\
-    k_m(\mathbf{t}, \mathbf{t}) & k_m(\mathbf{t}, \mathbf{t}^*) \\
-    k_m(\mathbf{t}^*, \mathbf{t}) & k_m(\mathbf{t}^*, \mathbf{t}^*) \\
-\end{bmatrix}
+\begin{aligned}
+\Sigma_{aa} &\coloneqq
+    \begin{bmatrix}
+        \mathrm{blkdiag}\left(
+            k_1(\mathbf{t}^*,\mathbf{t}^*),
+            \dots
+            k_m(\mathbf{t}^*,\mathbf{t}^*)
+            \right)
+        &
+        \begin{matrix}
+            k_1(\mathbf{t}^*,\mathbf{t}^*) \\
+            \vdots \\
+            k_m(\mathbf{t}^*,\mathbf{t}^*)
+        \end{matrix}
+    \\
+        \begin{matrix}
+            k_1(\mathbf{t}^*,\mathbf{t}^*) &
+            \dots &
+            k_m(\mathbf{t}^*,\mathbf{t}^*)
+        \end{matrix}
+        &
+        s(\mathbf{t}^*, \mathbf{t}^*) + \eta^*I
+    \end{bmatrix},
+\\[15pt]
+\Sigma_{ab} &\coloneqq
+    \begin{bmatrix}
+        k_1(\mathbf{t}^*, \mathbf{t}) \\
+        \vdots \\
+        k_m(\mathbf{t}^*, \mathbf{t}) \\
+        s(\mathbf{t}^*, \mathbf{t})
+    \end{bmatrix},
 \quad
-D \coloneqq \begin{bmatrix}
-        s(\mathbf{t},\mathbf{t}) + \eta I & s(\mathbf{t},\mathbf{t}^*) \\
-        s(\mathbf{t}^*, \mathbf{t}) & s(\mathbf{t}^*, \mathbf{t}^*) + \eta^* I
-    \end{bmatrix}
-\end{gather*}
+\Sigma_{ba} \coloneqq \Sigma_{ba}^{\top},
+\\[15pt]
+\Sigma_{bb} &\coloneqq
+    s(\mathbf{t}, \mathbf{t}) + \eta I,
+\end{aligned}
 ```
 
 with $s(t,u) \coloneqq k_1(t,u) + \dots + k_m(t,u)$.
+
+The posterior is then
+
+```math
+\begin{aligned}
+\mu_{a \mid b}   &= \Sigma_{ab} \Sigma_{bb}^{-1} x(\mathbf{t}) \\
+\Sigma_{a \mid b} &= \Sigma_{aa} - \Sigma_{ab} \Sigma_{bb}^{-1} \Sigma_{ba}
+\end{aligned}
+```
 
 Here, `nodes::Vector{Node}` is the list of covariance kernels for the
 latent GPs; `ts` and `xs` are the observed data, `noise` is the the
@@ -846,13 +873,10 @@ The return value `v` is a named tuple where
   for the posterior predictive.
 
 - `v.indexes` is named tuple where
-    - `v.indexes.fT` are the indexes in the covariance matrix for the latent
+    - `v.indexes.F` are the indexes in the covariance matrix for the latent
       functions at the training points
 
-    - `v.indexes.fP` are the indexes in the covariance matrix for the latent
-      functions at the test points.
-
-    - `v.indexes.xT` are the indexes in the covariance matrix for the
+    - `v.indexes.X` are the indexes in the covariance matrix for the
       observable functions at the test points
 
 # See also
@@ -877,8 +901,9 @@ function infer_gp_sum(
     Ktt  = Vector{AbstractMatrix{Float64}}(undef, m)   # Kᵢ(T,T)
     Ktp  = Vector{AbstractMatrix{Float64}}(undef, m)   # Kᵢ(T,T*)
     Kpp  = Vector{AbstractMatrix{Float64}}(undef, m)   # Kᵢ(T*,T*)
+    z    = vcat(ts, ts_pred)
     for i in 1:m
-        Ki = compute_cov_matrix_vectorized(nodes[i], 0.0, vcat(ts, ts_pred))
+        Ki = compute_cov_matrix_vectorized(nodes[i], 0.0, z)
         @views Ktt[i] = Ki[1:n, 1:n]
         @views Ktp[i] = Ki[1:n, n+1:n+p]
         @views Kpp[i] = Ki[n+1:n+p, n+1:n+p]
@@ -892,43 +917,33 @@ function infer_gp_sum(
     S_tp = reduce(+, Ktp) # zeros(n,p)
     S_pp = reduce(+, Kpp) # zeros(p,p)
 
-    # Full prior Σ over Z = [F₁(T); F₁(T*); …; Fₘ(T); Fₘ(T*); X(T); X(T*)]
-    d_lat = m*(n+p)
-    d_obs = n + p
+    # Full prior Σ over Z = [F₁(T*); … ; Fₘ(T*); X(T*); X(T)]
+    d_lat = m*p
+    d_obs = p + n
     d_all = d_lat + d_obs
     Σ = zeros(d_all, d_all)
 
     # Offsets for the stacking.
-    offset(i) = (i-1)*(n+p)
-    xT = d_lat .+ (1:n)
-    xP = d_lat .+ n .+ (1:p)
+    xP = d_lat     .+ (1:p)        # indexes of X(T*)
+    xT = d_lat + p .+ (1:n)        # indices of X(T)
 
     # Fill latent diagonal blocks Fᵢ(T,T*) and cross with [X(T), X(T*)]
     for i in 1:m
-        o  = offset(i)
-        lT = o .+ (1:n)             # latent at T
-        lP = o .+ (n .+ (1:p))      # latent at T*
+        lP = (i-1)*p .+ (1:p)      # latent at T*
 
-        # Cov[fᵢ(T,T*)]
-        @views Σ[lT, lT] .= Ktt[i]
-        @views Σ[lT, lP] .= Ktp[i]
-        @views Σ[lP, lT] .= Ktp[i]'
+        # Cov[Fᵢ(T*)]
         @views Σ[lP, lP] .= Kpp[i]
 
-        # Cov[Fᵢ(T, T*), X(T)]
-        # - Cov[Fᵢ(T,T), X(T)] = Ktt[i]
-        # - Cov[Fᵢ(T*), X(T)]  = Ktp[i]'
-        @views Σ[lT, xT] .= Ktt[i];   @views Σ[xT, lT] .= Ktt[i]'
-        @views Σ[lP, xT] .= Ktp[i]';  @views Σ[xT, lP] .= Ktp[i]
+        # Cov[Fᵢ(T*), X(T*)] = Kpp[i]
+        @views Σ[lP, xP] .= Kpp[i]
+        @views Σ[xP, lP] .= Kpp[i]'
 
-        # Cov[Fᵢ(T, T*), y(T)]
-        # - Cov[Fᵢ(T,T), y(T*)]  = Ktp[i]
-        # - Cov[Fᵢ(T,T*), y(T*)] = Kpp[i]
-        @views Σ[lT, xP] .= Ktp[i];   @views Σ[xP, lT] .= Ktp[i]'
-        @views Σ[lP, xP] .= Kpp[i];   @views Σ[xP, lP] .= Kpp[i]'
+        # Cov[Fᵢ(T*), X(T)] = Ktp[i]
+        @views Σ[lP, xT] .= Ktp[i]'
+        @views Σ[xT, lP] .= Ktp[i]
     end
 
-    # Cov[y(T,T*)]
+    # Cov[X(T,T*)]
     @views Σ[xT, xT] .= S_tt + noise * LinearAlgebra.I
     @views Σ[xT, xP] .= S_tp
     @views Σ[xP, xT] .= S_tp'
@@ -937,8 +952,8 @@ function infer_gp_sum(
     # Impose symmetry.
     Σ = 0.5*(Σ + Σ')
 
-    # Condition on y(T) = xs. Partition z = [a; b] with b = X(T).
-    keep = vcat(1:d_lat, xP)  # indices for a = [F(T,T*); X(T*)]
+    # Condition on x(T) = xs. Partition z = [a; b] with b = X(T).
+    keep = vcat(1:d_lat, xP)  # indices for a = [F(T*); X(T*)]
     b    = xT                 # indices for b = X(T)
 
     @views Σ_aa = Σ[keep, keep]
@@ -953,18 +968,11 @@ function infer_gp_sum(
     Σ_a = Symmetric(0.5*(Σ_a + Σ_a'))              # Impose symmetry
     mvn = Distributions.MvNormal(μ_a, Σ_a + JITTER * LinearAlgebra.I)
 
-    # Ranges for extraction from mvn.
-    fT = Vector{UnitRange{Int}}(undef, m)
-    fP = Vector{UnitRange{Int}}(undef, m)
-    for i in 1:m
-        o = offset(i)
-        fT[i] = (o+1):(o+n)
-        fP[i] = (o+n+1):(o+n+p)
-    end
+    # Ranges for extraction.
+    fP = [ ((i-1)*p+1) : (i*p) for i=1:m ]
     xP_out = (d_lat+1):(d_lat+p)
-    indexes = (fT=fT, fP=fP, xP=xP_out)
 
-    return (mvn=mvn, indexes=indexes)
+    return (mvn=mvn, indexes=(F=fP, X=xP_out))
 end
 
 
