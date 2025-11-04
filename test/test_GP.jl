@@ -219,6 +219,17 @@ check_close(a,b) = all(isapprox.(a, b, atol=1e-5))
       @test check_close(C3, C1)
       @test check_close(C3_cond, C1_cond)
 
+      # Confirm sum of latent covariances is overall variance.
+      mvn3_cond = GP.infer_gp_sum(ks, noise, ts_train, xs_train, ts_pred;
+                                    noise_pred=0.);
+      C = cov(mvn3_cond.mvn)
+      M = zeros(length(ts_pred), length(ts_pred))
+      for i=1:length(ks)
+        for j=1:length(ks)
+          M = M + C[mvn3_cond.indexes.F[i],mvn3_cond.indexes.F[j]]
+        end
+      end
+      @test check_close(M, C[mvn3_cond.indexes.X, mvn3_cond.indexes.X])
     end
 
 end
