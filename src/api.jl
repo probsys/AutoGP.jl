@@ -842,6 +842,62 @@ function GPModel(model::GPModel, kernels::Vector{<:GP.Node})
     return new_model
 end
 
+function predict_sum(
+        model::GPModel,
+        ds::IndexType,
+        ::Type{T};
+        quantiles::Vector{Float64}=Float64[],
+        noise_pred::Union{Nothing,Float64}=nothing) where {T <: GP.LeafNode}
+    # Transform the data.
+    ts = Transforms.apply(model.ds_transform, to_numeric.(model.ds))
+    xs = Transforms.apply(model.y_transform, to_numeric.(model.y))
+    ts_pred = Transforms.apply(model.ds_transform, to_numeric.(ds))
+    # Obtain particle weights.
+    weights = particle_weights(model)
+    # Obtain observation noise.
+    noises = observation_noise_variances(model; reparameterize=false)
+    # Split the kernels.
+    kernels = covariance_kernels(model; reparameterize=false)
+    split_kernels = [GP.split_kernel_sop(kernel, T) for kernel in kernels]
+    # Predictions.
+    names = vcat(
+        ["ds", "y_mean", "component", "particle", "weight"],
+        ["y_$(q)" for q in quantiles])
+    data = vcat(
+        [(typeof(model.ds[1]))[], Float64[], Integer[], Integer[], Float64[]],
+        [Float64[] for q in quantiles])
+    result = DataFrames.DataFrame(data, names)
+    # Build the multivariate Gaussians.
+    for particle=1:num_particles(model)
+        nodes = Vector{GP.Node}(collect(split_kernels[particle]))
+        mvn = GP.infer_gp_sum(
+            nodes,
+            noises[particle],
+            Float64.(ts),
+            Float64.(xs),
+            Float64.(ts_pred);
+            noise_pred=noise_pred)
+        y_mean = Distributions.mean(mvn.mvn)
+        y_bounds = Distributions.quantile(mvn.mvn, [quantiles])
+        for (component, indexes) in enumerate([mvn.indexes.X, mvn.indexes.F...])
+            records = Dict(
+                "ds"        => ds,
+                "y_mean"    => Transforms.unapply(model.y_transform, y_mean[indexes]),
+                "component" => repeat([component-1], length(ds)),
+                "particle"  => repeat([particle], length(ds)),
+                "weight"    => repeat([weights[particle]], length(ds))
+                )
+        for (j, q) in enumerate(quantiles)
+            records["y_$(q)"] = Transforms.unapply(
+                model.y_transform, y_bounds[indexes,j])
+        end
+        append!(result, DataFrames.DataFrame(records))
+        end
+    end
+    return result
+end
+
+
 # Serialization
 
 """
