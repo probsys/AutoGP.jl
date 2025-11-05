@@ -16,6 +16,7 @@ import DataFrames
 import Distributions
 import Random
 import Serialization
+import Statistics
 
 import Gen
 
@@ -552,14 +553,19 @@ function predict_quantile(
         max_iter=1e6)
     (0 < q < 1) || error("Quantile must be in (0,1).")
     mvn = predict_mvn(model, ds; noise_pred=noise_pred)
+    return Statistics.quantile(mvn, q; tol=tol, max_iter=max_iter)
+end
+
+function Statistics.quantile(mvn::MixtureModel, q::Real; tol=1e-5, max_iter=1e6)
     components = Distributions.components(mvn)
     means = hcat(Distributions.mean.(components)...)
     vars = hcat(Distributions.var.(components)...)
     mixtures = [Normal.(m, sqrt.(v)) for (m, v) in zip(eachrow(means), eachrow(vars))]
     weights = Distributions.probs(mvn)
     mixture = MixtureModel.(mixtures, Ref(weights))
-    @assert length(mixture) == length(ds)
-    @assert all(length.(mixtures) .== num_particles(model))
+    # Checks that used to be in predict_quantile.
+    # @assert length(mixture) == length(ds)
+    # @assert all(length.(mixtures) .== num_particles(model))
     x = zeros(length(mixture))
     iter = 0
     x_max = repeat([Inf], length(mixture))
