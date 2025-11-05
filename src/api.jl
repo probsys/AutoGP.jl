@@ -848,17 +848,9 @@ function predict_sum(
         ::Type{T};
         quantiles::Vector{Float64}=Float64[],
         noise_pred::Union{Nothing,Float64}=nothing) where {T <: GP.LeafNode}
-    # Transform the data.
-    ts = Transforms.apply(model.ds_transform, to_numeric.(model.ds))
-    xs = Transforms.apply(model.y_transform, to_numeric.(model.y))
-    ts_pred = Transforms.apply(model.ds_transform, to_numeric.(ds))
-    # Obtain particle weights.
-    weights = particle_weights(model)
-    # Obtain observation noise.
-    noises = observation_noise_variances(model; reparameterize=false)
-    # Split the kernels.
-    kernels = covariance_kernels(model; reparameterize=false)
-    split_kernels = [GP.split_kernel_sop(kernel, T) for kernel in kernels]
+    # Obtain the MVN mixture.
+    mixture, indexes = predict_mvn_sum(model, ds, T; noise_pred=noise_pred)
+    weights = Distributions.probs(mixture)
     # Predictions.
     names = vcat(
         ["ds", "y_mean", "component", "particle", "weight"],
@@ -869,6 +861,49 @@ function predict_sum(
     result = DataFrames.DataFrame(data, names)
     # Build the multivariate Gaussians.
     for particle=1:num_particles(model)
+        mvn = mixture.components[particle]
+        y_mean = Distributions.mean(mvn)
+        y_bounds = Distributions.quantile(mvn, [quantiles])
+        for (component, indexes) in enumerate([indexes.X, indexes.F...])
+            records = Dict(
+                "ds"        => ds,
+                "y_mean"    => y_mean[indexes],
+                "component" => repeat([component-1], length(ds)),
+                "particle"  => repeat([particle], length(ds)),
+                "weight"    => repeat([weights[particle]], length(ds))
+                )
+        for (j, q) in enumerate(quantiles)
+            records["y_$(q)"] = y_bounds[indexes,j]
+        end
+        append!(result, DataFrames.DataFrame(records))
+        end
+    end
+    return result
+end
+
+
+function predict_mvn_sum(
+        model::GPModel,
+        ds::IndexType,
+        ::Type{T};
+        noise_pred::Union{Nothing,Float64}=nothing) where {T <: GP.LeafNode}
+    # Transform the data.
+    ts = Transforms.apply(model.ds_transform, to_numeric.(model.ds))
+    xs = Transforms.apply(model.y_transform, to_numeric.(model.y))
+    ts_pred = Transforms.apply(model.ds_transform, to_numeric.(ds))
+    # Obtain particle weights.
+    # Obtain observation noise.
+    noises = observation_noise_variances(model; reparameterize=false)
+    # Split the kernels.
+    kernels = covariance_kernels(model; reparameterize=false)
+    split_kernels = [GP.split_kernel_sop(kernel, T) for kernel in kernels]
+    # MVN distributions.
+    n_particles = num_particles(model)
+    weights = particle_weights(model)
+    distributions = Vector{MvNormal}(undef, n_particles)
+    indexes = Any[nothing]
+    # Build the multivariate Gaussians.
+    for particle=1:num_particles(model)
         nodes = Vector{GP.Node}(collect(split_kernels[particle]))
         mvn = GP.infer_gp_sum(
             nodes,
@@ -877,26 +912,26 @@ function predict_sum(
             Float64.(xs),
             Float64.(ts_pred);
             noise_pred=noise_pred)
-        y_mean = Distributions.mean(mvn.mvn)
-        y_bounds = Distributions.quantile(mvn.mvn, [quantiles])
-        for (component, indexes) in enumerate([mvn.indexes.X, mvn.indexes.F...])
-            records = Dict(
-                "ds"        => ds,
-                "y_mean"    => Transforms.unapply(model.y_transform, y_mean[indexes]),
-                "component" => repeat([component-1], length(ds)),
-                "particle"  => repeat([particle], length(ds)),
-                "weight"    => repeat([weights[particle]], length(ds))
-                )
-        for (j, q) in enumerate(quantiles)
-            records["y_$(q)"] = Transforms.unapply(
-                model.y_transform, y_bounds[indexes,j])
-        end
-        append!(result, DataFrames.DataFrame(records))
+        mu = Distributions.mean(mvn.mvn)
+        cov = Distributions.cov(mvn.mvn)
+        # Since model.y_transform is linear, data remains normal.
+        # The same is not true for if model.y_transform is log, in which
+        # case we would need to return Distributions.MvLogNormal.
+        mu, cov = Transforms.unapply_mean_var(model.y_transform, mu, cov)
+        distributions[particle] = MvNormal(mu, cov)
+        # Set the indexes.
+        if !isnothing(indexes[1])
+            @assert indexes[1].F == mvn.indexes.F
+            @assert indexes[1].Y == mvn.indexes.X
+        else
+            indexes[1] = (F=mvn.indexes.F, Y=mvn.indexes.X)
         end
     end
-    return result
+    # Construct the mixture model.
+    mixture = MixtureModel(distributions, weights)
+    # Return mixture and indexes.
+    return (mixture, indexes[1])
 end
-
 
 # Serialization
 
