@@ -848,6 +848,52 @@ function GPModel(model::GPModel, kernels::Vector{<:GP.Node})
     return new_model
 end
 
+
+"""
+    predictions = predict_sum(
+        model::GPModel,
+        ds::IndexType,
+        ::Type{T};
+        quantiles::Vector{Float64}=Float64[],
+        noise_pred::Union{Nothing,Float64}=nothing) where {T <: GP.LeafNode}
+
+Same as [`predict`](@ref), except with an additional required parameter
+`T <: `[`AutoGP.GP.LeafNode`](@ref) that specifies which base kernel to use to
+split the predictions according to a sum-of-products decomposition.
+
+See [`AutoGP.GP.split_kernel_sop`](@ref) for details on the
+SOP decomposition of a composite kernel.
+
+The `"component"` column in the returned data frame takes three values
+for each time point and particle in the ensemble:
+`0` for the overall prediction, `1` for the subkernel
+containing base kernel type `T`, and `2` for the remaining kernel fragment.
+
+# Example
+```
+ Row │ ds       y_mean   component  particle  weight    y_0.025     y_0.975
+     │ Float64  Float64  Integer    Integer   Float64   Float64     Float64
+─────┼───────────────────────────────────────────────────────────────────────
+   1 │     3.0  1.50602          0         1  0.270087   -3.74135    6.75339
+   2 │     4.0  1.51511          0         1  0.270087  -12.6729    15.7031
+   3 │     3.0  1.50602          1         1  0.270087   -3.19708    6.20912
+   4 │     4.0  1.51511          1         1  0.270087  -12.4808    15.511
+   5 │     3.0  1.5              2         1  0.270087    1.4998     1.5002
+   6 │     4.0  1.5              2         1  0.270087    1.4998     1.5002
+   7 │     3.0  1.52347          0         2  0.729913    0.436285   2.61066
+   8 │     4.0  1.5027           0         2  0.729913    0.414135   2.59126
+   9 │     3.0  1.5              1         2  0.729913    1.4998     1.5002
+  10 │     4.0  1.5              1         2  0.729913    1.4998     1.5002
+  11 │     3.0  1.52347          2         2  0.729913    0.671908   2.37504
+  12 │     4.0  1.5027           2         2  0.729913    0.649378   2.35601
+```
+
+# See also
+
+- [`predict`](@ref)
+- [`predict_mvn_sum`](@ref)
+- [`AutoGP.GP.split_kernel_sop`](@ref)
+"""
 function predict_sum(
         model::GPModel,
         ds::IndexType,
@@ -870,7 +916,7 @@ function predict_sum(
         mvn = mixture.components[particle]
         y_mean = Distributions.mean(mvn)
         y_bounds = Distributions.quantile(mvn, [quantiles])
-        for (component, indexes) in enumerate([indexes.X, indexes.F...])
+        for (component, indexes) in enumerate([indexes.Y, indexes.F...])
             records = Dict(
                 "ds"        => ds,
                 "y_mean"    => y_mean[indexes],
@@ -887,7 +933,47 @@ function predict_sum(
     return result
 end
 
+"""
+    dist = predict_mvn_sum(
+        model::GPModel,
+        ds::IndexType,
+        ::Type{T};
+        noise_pred::Union{Nothing,Float64}=nothing) where {T <: GP.LeafNode}
 
+Same as [`predict_mvn`](@ref), except with an additional required parameter
+`T <: `[`AutoGP.GP.LeafNode`](@ref) that specifies which base kernel to use to
+split the predictions according to a sum-of-products decomposition.
+
+See [`AutoGP.GP.split_kernel_sop`](@ref) and
+[`AutoGP.GP.infer_gp_sum`](@ref)
+for details on the SOP decomposition of a composite kernel.
+
+The function returns a pair `(mvn, indexes)`
+where `mvn` is an instances of
+[`Distributions.MvNormal`](https://juliastats.org/Distributions.jl/stable/multivariate/#Distributions.MvNormal).
+
+If `ds` has length ``n``, then each component of the returned `mvn` has
+dimension ``3n`` for the mean and dimension ``3n \times 3n`` for
+the covariance kernel representing the joint distribution of the
+observable data and the two latent GPs.
+
+The `indexes` return value specifies how to extract dimensions for the sum
+and the two latent components: it is is a named tuple with fields
+
+- `indexes.Y`: indexes of the overall prediction.
+
+- `indexes.F[1]`: indexes of prediction for kernels in the
+  decomposition that include a base kernel of type `T`.
+
+- `indexes.F[2]`: indexes of prediction for kernels in the
+  decomposition that do not include a base kernel of type `T`.
+
+# See also
+
+- [`predict_mvn`](@ref)
+- [`predict_sum`](@ref)
+- [`AutoGP.GP.infer_gp_sum`](@ref)
+"""
 function predict_mvn_sum(
         model::GPModel,
         ds::IndexType,
@@ -920,9 +1006,9 @@ function predict_mvn_sum(
             noise_pred=noise_pred)
         mu = Distributions.mean(mvn.mvn)
         cov = Distributions.cov(mvn.mvn)
-        # Since model.y_transform is linear, data remains normal.
-        # The same is not true for if model.y_transform is log, in which
-        # case we would need to return Distributions.MvLogNormal.
+        # TODO: We must only include the mean in at most ONE of the two
+        # components. For now, the mean is in included in all three
+        # components.
         mu, cov = Transforms.unapply_mean_var(model.y_transform, mu, cov)
         distributions[particle] = MvNormal(mu, cov)
         # Set the indexes.

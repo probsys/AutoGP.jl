@@ -20,7 +20,9 @@ import AutoGP
 using CSV
 using Dates
 using DataFrames
+using Printf
 using PythonPlot
+using Statistics
 ```
 
 
@@ -58,7 +60,7 @@ ax.scatter(df_test.ds, df_test.y, marker="o", color="w", edgecolor="k", label="T
 
 
 
-    Python: <matplotlib.collections.PathCollection object at 0x713940142a80>
+    Python: <matplotlib.collections.PathCollection object at 0x7367187bbe30>
 
 
 
@@ -107,7 +109,7 @@ ax.scatter(df_test.ds, df_test.y, marker="o", color="w", edgecolor="k", label="T
 
 
 
-    Python: <matplotlib.collections.PathCollection object at 0x7138acd17d10>
+    Python: <matplotlib.collections.PathCollection object at 0x7367183731a0>
 
 
 
@@ -709,37 +711,73 @@ println("Model $(idx) - NO PER"); display(AutoGP.covariance_kernels(model_b)[idx
 
 
 
+We can obtain predictions from the sum-of-products using [`AutoGP.GP.predict_sum`](@ref).
+
 
 ```julia
-forecasts_a = AutoGP.predict(model_a, ds_query .+ Day(1); quantiles=[0.025, 0.975]);
-forecasts_b = AutoGP.predict(model_b, ds_query .+ Day(1); quantiles=[0.025, 0.975]);
+forecasts_sum = AutoGP.predict_sum(model, ds_query, AutoGP.GP.Periodic; quantiles=[0.025, 0.975]);
 ```
 
 
 ```julia
-fig, axes = PythonPlot.subplots(figsize=(10,14), nrows=2, tight_layout=true)
-for (ax, m, f) in zip(axes, [model_a, model_b], [forecasts_a, forecasts_b])
-    for i=1:AutoGP.num_particles(m)
-        subdf = f[f.particle.==i,:]
-        ax.plot(subdf[!,"ds"], subdf[!,"y_mean"], color="k", linewidth=.5)
-        ax.fill_between(subdf.ds, subdf[!,"y_0.025"], subdf[!,"y_0.975"]; color="tab:blue", alpha=0.05)
+title = ["ALL", "PER", "NOPER"]
+nrows = AutoGP.num_particles(model)
+fig, axes = PythonPlot.subplots(ncols=3, nrows=nrows, figsize=(26,5*nrows))
+for particle=1:AutoGP.num_particles(model)
+    f = forecasts_sum[forecasts_sum.particle .== particle,:]
+    for (component, ax) in zip(0:2, axes[particle-1])
+        subdf = f[f.component .== component,:]
+        ax.plot(subdf[!,"ds"], subdf[!,"y_mean"], color="k", linewidth=1)
+        ax.fill_between(subdf.ds, subdf[!,"y_0.025"], subdf[!,"y_0.975"]; color="tab:blue", alpha=0.5)
+        ax.scatter(df_train.ds, df_train.y, marker="o", color="k", label="Observed Data")
+        ax.scatter(df_test.ds, df_test.y, marker="o", color="w", edgecolor="k", label="Test Data")
+        w = @sprintf("%1.2f", maximum(subdf.weight))
+        ax.set_title("Particle $(particle) - Component $(title[component+1]) - Weight $(w)")
+        ax.set_ylim([5000, 7500])
     end
-    ax.scatter(df_train.ds, df_train.y, marker="o", color="k", label="Observed Data")
-    ax.scatter(df_test.ds, df_test.y, marker="o", color="w", edgecolor="k", label="Test Data")
 end
-axes[0].set_title("STRUCTURE: PER")
-axes[1].set_title("STRUCTURE: NO PER")
+fig.savefig("forecasts-joint.png", dpi=150)
 ```
 
 
     
-![png](decomposition_files/decomposition_36_0.png)
+![png](decomposition_files/decomposition_37_0.png)
     
 
 
 
 
 
-    Python: Text(0.5, 1.0, 'STRUCTURE: NO PER')
+    Python: None
+
+
+
+Using [`AutoGP.GP.predict_mvn_sum`](@ref) gives the overall mixture of Gaussians.
+
+
+```julia
+ds_probe = vcat(df_train.ds, df_test.ds)
+mvn, indexes = AutoGP.predict_mvn_sum(model, ds_probe, AutoGP.GP.Periodic);
+
+overall_predictions = mean(mvn)[indexes.Y]
+seasonal_predictions = mean(mvn)[indexes.F[1]]
+nonseasonal_predictions = mean(mvn)[indexes.F[2]]
+fig, ax = PythonPlot.subplots(figsize=(10,6))
+ax.plot(ds_probe, seasonal_predictions, marker=".", color="k")
+ax.plot(ds_probe, nonseasonal_predictions, marker=".", color="k")
+ax.scatter(df_train.ds, df_train.y, marker=".")
+ax.scatter(df_test.ds, df_test.y, marker="o", edgecolor="k", facecolor="w")
+```
+
+
+    
+![png](decomposition_files/decomposition_39_0.png)
+    
+
+
+
+
+
+    Python: <matplotlib.collections.PathCollection object at 0x73660308d5b0>
 
 
