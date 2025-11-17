@@ -640,7 +640,6 @@ axes[2].set_title("STRUCTURE: GE")
 
 
 
-    Python: Text(0.5, 1.0, 'STRUCTURE: GE')
 
 
 
@@ -748,7 +747,6 @@ fig.savefig("forecasts-joint.png", dpi=150)
 
 
 
-    Python: None
 
 
 
@@ -778,6 +776,5 @@ ax.scatter(df_test.ds, df_test.y, marker="o", edgecolor="k", facecolor="w")
 
 
 
-    Python: <matplotlib.collections.PathCollection object at 0x73660308d5b0>
 
 
