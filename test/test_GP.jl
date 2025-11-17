@@ -15,7 +15,9 @@
 
 using Test
 using AutoGP
+using Random
 
+using AutoGP.GP.Distributions: cov
 using AutoGP: Transforms
 using AutoGP: GP
 
@@ -137,3 +139,97 @@ end # @testset "rescale"
             GP.ChangePoint(sentinel, p, 1, 1))
 
 end # @testset "split_kernel_sop"
+
+check_close(a,b) = all(isapprox.(a, b, atol=1e-5))
+
+@testset "infer_gp_sum" begin
+    T = 5
+    ts_pred = Vector{Float64}(range(start=1, stop=13*T, step=1))
+    ts_train = ts_pred[1:10*T]
+    ts_test = ts_pred[10*T+1:end]
+    noise = 0.01
+
+    # Create test cases.
+    kernels_base = get_reparam_base_kernels()
+    kernels_single = [GP.Node[k] for k in kernels_base]
+    permutations = Random.randperm.(length(kernels_single) .* ones(Int, 10))
+    kernels_pairs = [
+        GP.Node[
+          reduce(*, kernels_base[p[1:2]]),
+          reduce(*, kernels_base[p[1:2]]),
+          kernels_base[p[end]]
+          ]
+        for p in permutations
+      ]
+
+
+    for ks in vcat(kernels_single, kernels_pairs)
+      k = reduce(+, ks)
+
+      # DIRECT GP.
+      mvn1 = GP.Distributions.MvNormal(k, noise, Float64[], Float64[], ts_pred)
+      xs = rand(mvn1)
+      xs_train = xs[1:length(ts_train)]
+      xs_test = t= xs[length(ts_train)+1:end]
+      mvn1_cond = GP.Distributions.MvNormal(k, noise, ts_train, xs_train, ts_pred)
+
+      C1 = cov(mvn1)
+      C1_cond = cov(mvn1_cond)
+
+      # CASE 1: GP SUM WITH SINGLE NODE.
+      mvn2 = GP.infer_gp_sum(GP.Node[k], noise, Float64[], Float64[], ts_pred);
+      mvn2_cond = GP.infer_gp_sum(GP.Node[k], noise, ts_train, xs_train, ts_pred);
+      C2 = cov(mvn2.mvn)[mvn2.indexes.X, mvn2.indexes.X]
+      C2_cond = cov(mvn2_cond.mvn)[mvn2_cond.indexes.X, mvn2_cond.indexes.X]
+
+      # Confirm covariances match.
+      @test check_close(C2, C1)
+      @test check_close(C2_cond, C1_cond)
+
+      # Confirm index dimensions match for mvn2.
+      @test length(mvn2.indexes.F) == 1
+      @test length(mvn2.indexes.X) == length(ts_pred)
+      @test length(mvn2.indexes.F[1]) == length(ts_pred)
+
+      # Confirm index dimensions match for mvn2_cond.
+      @test length(mvn2_cond.indexes.F) == 1
+      @test length(mvn2_cond.indexes.X) == length(ts_pred)
+      @test length(mvn2_cond.indexes.F[1]) == length(ts_pred)
+
+      # CASE 2: GP SUM WITH MULTIPLE NODE.
+      mvn3 = GP.infer_gp_sum(ks, noise, Float64[], Float64[], ts_pred);
+      mvn3_cond = GP.infer_gp_sum(ks, noise, ts_train, xs_train, ts_pred);
+      C3 = cov(mvn3.mvn)[mvn3.indexes.X, mvn3.indexes.X]
+      C3_cond = cov(mvn3_cond.mvn)[mvn3_cond.indexes.X, mvn3_cond.indexes.X]
+
+      # Confirm index dimensions match for mvn3.
+      @test length(mvn3.indexes.F) == length(ks)
+      @test length(mvn3.indexes.X) == length(ts_pred)
+      for i=1:length(ks)
+        @test length(mvn3.indexes.F[i]) == length(ts_pred)
+      end
+
+      # Confirm index dimensions match for mvn3_cond.
+      @test length(mvn3_cond.indexes.F) == length(ks)
+      @test length(mvn3_cond.indexes.X) == length(ts_pred)
+      for i=1:length(ks)
+        @test length(mvn3_cond.indexes.F[i]) == length(ts_pred)
+      end
+
+      @test check_close(C3, C1)
+      @test check_close(C3_cond, C1_cond)
+
+      # Confirm sum of latent covariances is overall variance.
+      mvn3_cond = GP.infer_gp_sum(ks, noise, ts_train, xs_train, ts_pred;
+                                    noise_pred=0.);
+      C = cov(mvn3_cond.mvn)
+      M = zeros(length(ts_pred), length(ts_pred))
+      for i=1:length(ks)
+        for j=1:length(ks)
+          M = M + C[mvn3_cond.indexes.F[i],mvn3_cond.indexes.F[j]]
+        end
+      end
+      @test check_close(M, C[mvn3_cond.indexes.X, mvn3_cond.indexes.X])
+    end
+
+end

@@ -26,6 +26,10 @@ using Match: @match
 using Parameters: @with_kw
 using Printf: @sprintf
 
+using LinearAlgebra: cholesky
+using LinearAlgebra: Hermitian
+using LinearAlgebra: Symmetric
+
 import Gen
 
 """
@@ -665,7 +669,7 @@ function compute_cov_matrix(node::Node, noise, ts)
     return cov_matrix
 end
 
-"""
+@doc raw"""
     dist = Distributions.MvNormal(
             node::Node,
             noise::Float64,
@@ -677,7 +681,29 @@ end
 Return [`MvNormal`](https://juliastats.org/Distributions.jl/stable/multivariate/#Distributions.MvNormal)
 posterior predictive distribution over `xs_pred` at time indexes `ts_pred`,
 given noisy observations `[ts, xs]` and covariance function `node` with
-given level of observation `noise`.
+given level of observation `noise`. The model is
+
+```math
+\begin{aligned}
+    \begin{bmatrix}
+        X(\mathbf{t})\\
+        X(\mathbf{t}^*)
+    \end{bmatrix}
+\sim \mathrm{MultivariteNormal} \left(
+    \mathbf{0},
+    \begin{bmatrix}
+        k(\mathbf{t}, \mathbf{t}) + \eta I & k(\mathbf{t}, \mathbf{t}^*) \\
+        k(\mathbf{t}^*, \mathbf{t}) + \eta I & k(\mathbf{t}^*, \mathbf{t}^*) + \eta^* I
+    \end{bmatrix}
+    \right).
+\end{aligned}
+```
+
+The function returns the conditional multivariate normal distribution
+
+```math
+X(\mathbf{t}^*) \mid X(\mathbf{t}) = x(\mathbf{t}).
+```
 
 By default, the observation noise (`noise_pred`) of the new data is equal to
 the `noise` of the observed data; use `noise_pred = 0.` to obtain the
@@ -716,6 +742,242 @@ function Distributions.MvNormal(
     conditional_cov_matrix = conditional_cov_matrix + (noise_pred * LinearAlgebra.I)
     return Distributions.MvNormal(conditional_mu, conditional_cov_matrix)
 end
+
+JITTER = 1e-8
+
+@doc raw"""
+
+    (mvn, indexes) = infer_gp_sum(
+                nodes::Vector{Node},
+                noise::Float64,
+                ts::Vector{Float64},
+                xs::Vector{Float64},
+                ts_pred::Vector{Float64};
+                noise_pred::Union{Nothing,Float64}=nothing)
+
+Consider a family of $m$ independent Gaussian process kernels
+
+```math
+\begin{aligned}
+F_i \sim \mathrm{GP}(\mathbf{0}, k_i) && (1 \le i \le m).
+\end{aligned}
+```
+and let $\varepsilon(t)$ be an i.i.d. noise process with variance
+$\eta$.
+
+Suppose we can observe the noisy sum of these latent GP functions:
+
+```math
+\begin{aligned}
+X(t) = \sum_{i=1}^{m} F_i(t) + \varepsilon(t)
+&&
+X \sim \mathrm{GP}(0, k_1 + \dots + k_m + \eta).
+\end{aligned}
+```
+
+Given observed data $(\mathbf{t}, x(\mathbf{t}))$ and
+test points $\mathbf{t}^*$, this function computes the joint
+multivariate normal posterior over all unknown components
+
+```math
+\left[F_1(\mathbf{t}^*), \dots, F_m(\mathbf{t}^*), X(\mathbf{t}^*) \right]
+    \mid X(\mathbf{t})=x(\mathbf{t}).
+```
+
+Inference is performed on the multivariate Gaussian system,
+which has a block diagonal structure
+
+```math
+\begin{aligned}
+Z \coloneqq
+    \begin{bmatrix}
+        F_1(\mathbf{t}^*)   \\
+        \vdots              \\
+        F_m(\mathbf{t}^*)   \\
+        X(\mathbf{t}^*)     \\
+        X(\mathbf{t})
+    \end{bmatrix},
+&&
+Z \sim \mathrm{MultivariteNormal}
+    \left(
+        \mathbf{0},
+        \begin{bmatrix}
+            \Sigma_{aa} & \Sigma_{ab} \\
+            \Sigma_{ba} & \Sigma_{bb}
+        \end{bmatrix}\right),
+\end{aligned}
+```
+where
+```math
+\begin{aligned}
+\Sigma_{aa} &\coloneqq
+    \begin{bmatrix}
+        \mathrm{blkdiag}\left(
+            k_1(\mathbf{t}^*,\mathbf{t}^*),
+            \dots
+            k_m(\mathbf{t}^*,\mathbf{t}^*)
+            \right)
+        &
+        \begin{matrix}
+            k_1(\mathbf{t}^*,\mathbf{t}^*) \\
+            \vdots \\
+            k_m(\mathbf{t}^*,\mathbf{t}^*)
+        \end{matrix}
+    \\
+        \begin{matrix}
+            k_1(\mathbf{t}^*,\mathbf{t}^*) &
+            \dots &
+            k_m(\mathbf{t}^*,\mathbf{t}^*)
+        \end{matrix}
+        &
+        s(\mathbf{t}^*, \mathbf{t}^*) + \eta^*I
+    \end{bmatrix},
+\\[15pt]
+\Sigma_{ab} &\coloneqq
+    \begin{bmatrix}
+        k_1(\mathbf{t}^*, \mathbf{t}) \\
+        \vdots \\
+        k_m(\mathbf{t}^*, \mathbf{t}) \\
+        s(\mathbf{t}^*, \mathbf{t})
+    \end{bmatrix},
+\quad
+\Sigma_{ba} \coloneqq \Sigma_{ba}^{\top},
+\\[15pt]
+\Sigma_{bb} &\coloneqq
+    s(\mathbf{t}, \mathbf{t}) + \eta I,
+\end{aligned}
+```
+
+with $s(t,u) \coloneqq k_1(t,u) + \dots + k_m(t,u)$.
+
+The posterior is then
+
+```math
+\begin{aligned}
+\mu_{a \mid b}   &= \Sigma_{ab} \Sigma_{bb}^{-1} x(\mathbf{t}) \\
+\Sigma_{a \mid b} &= \Sigma_{aa} - \Sigma_{ab} \Sigma_{bb}^{-1} \Sigma_{ba}
+\end{aligned}
+```
+
+Here, `nodes::Vector{Node}` is the list of covariance kernels for the
+latent GPs; `ts` and `xs` are the observed data, `noise` is the the
+observation noise, `ts_pred` are the test indexes. By default, the
+observation noise (`noise_pred`) of the test data is equal to the `noise`
+of the observed data; use `noise_pred = 0.` to obtain the predictive
+distribution over noiseless future values.
+
+The return value `v` is a named tuple where
+
+- `v.mvn` an instance of
+  [`MvNormal`](https://juliastats.org/Distributions.jl/stable/multivariate/#Distributions.MvNormal)
+  for the posterior predictive.
+
+- `v.indexes` is named tuple where
+    - `v.indexes.F` are the indexes in the covariance matrix for the latent
+      functions at the test points.
+
+    - `v.indexes.X` are the indexes in the covariance matrix for the
+      observable functions at the test points.
+
+For predictions on in-sample time points `ts`, include all the requested
+time points in  `ts_pred`.
+
+# See also
+- To compute log probabilities, [`Distributions.logpdf`](https://juliastats.org/Distributions.jl/v0.24/multivariate/#Distributions.logpdf-Tuple{MultivariateDistribution{S}%20where%20S%3C:ValueSupport,%20AbstractArray})
+- To generate samples, [`Base.rand`](https://juliastats.org/Distributions.jl/stable/multivariate/#Base.rand-Tuple{AbstractRNG,%20MultivariateDistribution})
+- To compute quantiles, [`Distributions.quantile`](@ref)
+"""
+function infer_gp_sum(
+        nodes::Vector{Node},
+        noise::Float64,
+        ts::Vector{Float64},
+        xs::Vector{Float64},
+        ts_pred::Vector{Float64};
+        noise_pred::Union{Nothing,Float64}=nothing)
+
+    m = length(nodes)
+    n = length(ts)
+    p = length(ts_pred)
+    noise_pred = isnothing(noise_pred) ? noise : noise_pred
+
+    # Joint blocks for Cov[Fᵢ(T,T*)]
+    Ktt  = Vector{AbstractMatrix{Float64}}(undef, m)   # Kᵢ(T,T)
+    Ktp  = Vector{AbstractMatrix{Float64}}(undef, m)   # Kᵢ(T,T*)
+    Kpp  = Vector{AbstractMatrix{Float64}}(undef, m)   # Kᵢ(T*,T*)
+    z    = vcat(ts, ts_pred)
+    for i in 1:m
+        Ki = compute_cov_matrix_vectorized(nodes[i], 0.0, z)
+        @views Ktt[i] = Ki[1:n, 1:n]
+        @views Ktp[i] = Ki[1:n, n+1:n+p]
+        @views Kpp[i] = Ki[n+1:n+p, n+1:n+p]
+        # Symmetrize for numerical stability.
+        Ktt[i] = 0.5*(Ktt[i] + Ktt[i]')
+        Kpp[i] = 0.5*(Kpp[i] + Kpp[i]')
+    end
+
+    # Sums for X block.
+    S_tt = reduce(+, Ktt) # zeros(n,n)
+    S_tp = reduce(+, Ktp) # zeros(n,p)
+    S_pp = reduce(+, Kpp) # zeros(p,p)
+
+    # Full prior Σ over Z = [F₁(T*); … ; Fₘ(T*); X(T*); X(T)]
+    d_lat = m*p
+    d_obs = p + n
+    d_all = d_lat + d_obs
+    Σ = zeros(d_all, d_all)
+
+    # Offsets for the stacking.
+    xP = d_lat     .+ (1:p)        # indexes of X(T*)
+    xT = d_lat + p .+ (1:n)        # indices of X(T)
+
+    # Fill latent diagonal blocks Fᵢ(T,T*) and cross with [X(T), X(T*)]
+    for i in 1:m
+        lP = (i-1)*p .+ (1:p)      # latent at T*
+
+        # Cov[Fᵢ(T*)]
+        @views Σ[lP, lP] .= Kpp[i]
+
+        # Cov[Fᵢ(T*), X(T*)] = Kpp[i]
+        @views Σ[lP, xP] .= Kpp[i]
+        @views Σ[xP, lP] .= Kpp[i]'
+
+        # Cov[Fᵢ(T*), X(T)] = Ktp[i]
+        @views Σ[lP, xT] .= Ktp[i]'
+        @views Σ[xT, lP] .= Ktp[i]
+    end
+
+    # Cov[X(T,T*)]
+    @views Σ[xT, xT] .= S_tt + noise * LinearAlgebra.I
+    @views Σ[xT, xP] .= S_tp
+    @views Σ[xP, xT] .= S_tp'
+    @views Σ[xP, xP] .= S_pp + noise_pred * LinearAlgebra.I
+
+    # Impose symmetry.
+    Σ = 0.5*(Σ + Σ')
+
+    # Condition on x(T) = xs. Partition z = [a; b] with b = X(T).
+    keep = vcat(1:d_lat, xP)  # indices for a = [F(T*); X(T*)]
+    b    = xT                 # indices for b = X(T)
+
+    @views Σ_aa = Σ[keep, keep]
+    @views Σ_ab = Σ[keep, b]
+    @views Σ_bb = Σ[b, b]
+    @views Σ_ba = Σ[b, keep]
+
+    # Inference via Schur complement.
+    F = cholesky(Hermitian(Σ_bb); check=false)     # Σ_bb = S_tt + noise*I
+    μ_a = Σ_ab * (F \ xs)                          # Posterior mean
+    Σ_a = Σ_aa - Σ_ab * (F \ Σ_ba)                 # Posterior covariance
+    Σ_a = Symmetric(0.5*(Σ_a + Σ_a'))              # Impose symmetry
+    mvn = Distributions.MvNormal(μ_a, Σ_a + JITTER * LinearAlgebra.I)
+
+    # Ranges for extraction.
+    fP = [ ((i-1)*p+1) : (i*p) for i=1:m ]
+    xP_out = (d_lat+1):(d_lat+p)
+
+    return (mvn=mvn, indexes=(F=fP, X=xP_out))
+end
+
 
 """
     Distributions.quantile(dist::Distributions.MvNormal, p)

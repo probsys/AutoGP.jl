@@ -143,6 +143,8 @@ AutoGP.observation_noise_variances
 AutoGP.decompose
 AutoGP.extract_kernel
 AutoGP.split_kernel_sop
+AutoGP.predict_sum
+AutoGP.predict_mvn_sum
 ```
 
 ## [Serialization](@id model_serialization)
