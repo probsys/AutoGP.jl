@@ -874,10 +874,13 @@ The return value `v` is a named tuple where
 
 - `v.indexes` is named tuple where
     - `v.indexes.F` are the indexes in the covariance matrix for the latent
-      functions at the training points
+      functions at the test points.
 
     - `v.indexes.X` are the indexes in the covariance matrix for the
-      observable functions at the test points
+      observable functions at the test points.
+
+For predictions on in-sample time points `ts`, include all the requested
+time points in  `ts_pred`.
 
 # See also
 - To compute log probabilities, [`Distributions.logpdf`](https://juliastats.org/Distributions.jl/v0.24/multivariate/#Distributions.logpdf-Tuple{MultivariateDistribution{S}%20where%20S%3C:ValueSupport,%20AbstractArray})

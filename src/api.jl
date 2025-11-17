@@ -953,7 +953,7 @@ where `mvn` is an instances of
 [`Distributions.MvNormal`](https://juliastats.org/Distributions.jl/stable/multivariate/#Distributions.MvNormal).
 
 If `ds` has length ``n``, then each component of the returned `mvn` has
-dimension ``3n`` for the mean and dimension ``3n \times 3n`` for
+dimension ``3n`` for the mean and dimension ``3n \\times 3n`` for
 the covariance kernel representing the joint distribution of the
 observable data and the two latent GPs.
 
@@ -1007,9 +1007,10 @@ function predict_mvn_sum(
         mu = Distributions.mean(mvn.mvn)
         cov = Distributions.cov(mvn.mvn)
         # TODO: We must only include the mean in at most ONE of the two
-        # components. For now, the mean is in included in all three
-        # components.
+        # components. For now, the mean is included in all three.
         mu, cov = Transforms.unapply_mean_var(model.y_transform, mu, cov)
+        # Remove the mean from the first latent function.
+        # mu[mvn.indexes.F[1]] .+= model.y_transform.intercept / model.y_transform.slope
         distributions[particle] = MvNormal(mu, cov)
         # Set the indexes.
         if !isnothing(indexes[1])
