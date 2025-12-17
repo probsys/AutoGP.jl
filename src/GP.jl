@@ -596,6 +596,8 @@ julia> split_kernel_sop(l*p + l*c, Periodic)
 (l*p, l*c)
 julia> split_kernel_sop(p*p, Periodic)
 (p*p, Constant(0))
+julia> split_kernel_sop((l+p)*(l+p), Periodic)
+(p*l+p*p+l*p, l*l)
 ```
 """
 function split_kernel_sop(node::Node, ::Type{T}) where {T<:LeafNode}
@@ -613,7 +615,19 @@ split_kernel_sop_helper(node::T, ::Type{T}) where {T<:LeafNode} = (node, nothing
 split_kernel_sop_helper(node::LeafNode, ::Type{T}) where {T<:LeafNode} = (nothing, node)
 
 function split_kernel_sop_helper(node::Times, ::Type{T}) where {T<:LeafNode}
-    return (has_leaf(node.left, T) || has_leaf(node.right, T)) ? (node, nothing) : (nothing, node)
+    (left_a, left_b) = split_kernel_sop_helper(node.left, T)
+    (right_a, right_b) = split_kernel_sop_helper(node.right, T)
+    mult(a, b) = (isnothing(a) || isnothing(b)) ? nothing : a * b
+    terms = [
+        mult(left_a, right_a),
+        mult(left_a, right_b),
+        mult(left_b, right_a),
+        mult(left_b, right_b),
+    ]
+    l_sop = merge_split_operand(node.left + node.right, terms[1], terms[2])
+    l_sop = merge_split_operand(node.left + node.right, l_sop, terms[3])
+    r_sop = terms[4]
+    return (l_sop, r_sop)
 end
 
 function split_kernel_sop_helper(node::B, ::Type{T}) where {B<:BinaryOpNode, T <: LeafNode}
@@ -625,7 +639,7 @@ function split_kernel_sop_helper(node::B, ::Type{T}) where {B<:BinaryOpNode, T <
 end
 
 # Helper function for split_kernel_sop_helper
-merge_split_operand(node::Plus, node_a, node_b) = @match (node_a, node_b) begin
+merge_split_operand(::Plus, node_a, node_b) = @match (node_a, node_b) begin
     (::Nothing, ::Nothing) => nothing
     (::Node, ::Nothing)    => node_a
     (::Nothing, ::Node)    => node_b
