@@ -110,6 +110,8 @@ end # @testset "rescale"
     w = GP.WhiteNoise(1)
     p = GP.Periodic(1,1)
     g = GP.GammaExponential(1, 1)
+    p2 = GP.Periodic(2,1)
+    l2 = GP.Linear(2)
 
     sentinel = GP.Constant(0)
 
@@ -124,7 +126,10 @@ end # @testset "rescale"
     end
 
     @test GP.split_kernel_sop(l*l + p*l + g*w, GP.Linear) == (l*l+p*l, g*w)
-    @test GP.split_kernel_sop(l*(l+p+g), GP.Periodic) == (l*(l+p+g), sentinel)
+    @test GP.split_kernel_sop(l*(l+p+g), GP.Periodic) == (l*p, l*(l+g))
+    @test GP.split_kernel_sop((l*p)*(l+g), GP.Periodic) == ((l*p)*(l+g), sentinel)
+    @test GP.split_kernel_sop((l+p)*(g+l), GP.Periodic) == (p*(g+l), l*(g+l))
+    @test GP.split_kernel_sop((l+p)*(p2+l2), GP.Periodic) == (p*p2+p*l2+l*p2, l*l2)
 
     k = GP.ChangePoint(p*l+l, p*p+g, 1,1)
     @test GP.split_kernel_sop(k, GP.WhiteNoise) == (sentinel, k)
