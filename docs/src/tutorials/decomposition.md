@@ -60,7 +60,7 @@ ax.scatter(df_test.ds, df_test.y, marker="o", color="w", edgecolor="k", label="T
 
 
 
-    Python: <matplotlib.collections.PathCollection object at 0x7367187bbe30>
+    Python: <matplotlib.collections.PathCollection object at 0x7ddc363cdb80>
 
 
 
@@ -109,7 +109,7 @@ ax.scatter(df_test.ds, df_test.y, marker="o", color="w", edgecolor="k", label="T
 
 
 
-    Python: <matplotlib.collections.PathCollection object at 0x7367183731a0>
+    Python: <matplotlib.collections.PathCollection object at 0x7ddc35e42880>
 
 
 
@@ -628,19 +628,13 @@ for (ax, m, f) in zip(axes, [model_lin, model_per, model_ge], [forecasts_lin, fo
 end
 axes[0].set_title("STRUCTURE: LIN")
 axes[1].set_title("STRUCTURE: PER")
-axes[2].set_title("STRUCTURE: GE")
+axes[2].set_title("STRUCTURE: GE");
 ```
 
 
     
 ![png](decomposition_files/decomposition_28_0.png)
     
-
-
-
-
-
-
 
 
 ## Sum-of-Products Decomposition
@@ -724,30 +718,26 @@ nrows = AutoGP.num_particles(model)
 fig, axes = PythonPlot.subplots(ncols=3, nrows=nrows, figsize=(26,5*nrows))
 for particle=1:AutoGP.num_particles(model)
     f = forecasts_sum[forecasts_sum.particle .== particle,:]
-    for (component, ax) in zip(0:2, axes[particle-1])
+    for (component, ax) in zip([0,2,1], axes[particle-1])
         subdf = f[f.component .== component,:]
         ax.plot(subdf[!,"ds"], subdf[!,"y_mean"], color="k", linewidth=1)
         ax.fill_between(subdf.ds, subdf[!,"y_0.025"], subdf[!,"y_0.975"]; color="tab:blue", alpha=0.5)
-        ax.scatter(df_train.ds, df_train.y, marker="o", color="k", label="Observed Data")
-        ax.scatter(df_test.ds, df_test.y, marker="o", color="w", edgecolor="k", label="Test Data")
+        if component in [0,2]
+            ax.scatter(df_train.ds, df_train.y, marker="o", color="k", label="Observed Data")
+            ax.scatter(df_test.ds, df_test.y, marker="o", color="w", edgecolor="k", label="Test Data")
+            ax.set_ylim([5000, 7500])
+        end
         w = @sprintf("%1.2f", maximum(subdf.weight))
         ax.set_title("Particle $(particle) - Component $(title[component+1]) - Weight $(w)")
-        ax.set_ylim([5000, 7500])
     end
 end
-fig.savefig("forecasts-joint.png", dpi=150)
+fig.savefig("forecasts-joint.png", dpi=150);
 ```
 
 
     
 ![png](decomposition_files/decomposition_37_0.png)
     
-
-
-
-
-
-
 
 
 Using [`AutoGP.GP.predict_mvn_sum`](@ref) gives the overall mixture of Gaussians.
@@ -757,14 +747,17 @@ Using [`AutoGP.GP.predict_mvn_sum`](@ref) gives the overall mixture of Gaussians
 ds_probe = vcat(df_train.ds, df_test.ds)
 mvn, indexes = AutoGP.predict_mvn_sum(model, ds_probe, AutoGP.GP.Periodic);
 
-overall_predictions = mean(mvn)[indexes.Y]
-seasonal_predictions = mean(mvn)[indexes.F[1]]
-nonseasonal_predictions = mean(mvn)[indexes.F[2]]
-fig, ax = PythonPlot.subplots(figsize=(10,6))
-ax.plot(ds_probe, seasonal_predictions, marker=".", color="k")
-ax.plot(ds_probe, nonseasonal_predictions, marker=".", color="k")
-ax.scatter(df_train.ds, df_train.y, marker=".")
-ax.scatter(df_test.ds, df_test.y, marker="o", edgecolor="k", facecolor="w")
+overall_predictions = mean(mvn.components[1])[indexes.Y]
+seasonal_predictions = mean(mvn.components[1])[indexes.F[1]]
+nonseasonal_predictions = mean(mvn.components[1])[indexes.F[2]]
+
+fig, ax = PythonPlot.subplots(figsize=(18,6), ncols=2)
+ax[0].plot(ds_probe, nonseasonal_predictions, marker=".", color="k")
+ax[0].plot(ds_probe, nonseasonal_predictions .+ seasonal_predictions , marker=".", color="k")
+ax[0].scatter(df_train.ds, df_train.y, marker=".")
+ax[0].scatter(df_test.ds, df_test.y, marker="o", edgecolor="k", facecolor="w");
+
+ax[1].plot(ds_probe, seasonal_predictions, marker=".", color="k")
 ```
 
 
@@ -776,5 +769,11 @@ ax.scatter(df_test.ds, df_test.y, marker="o", edgecolor="k", facecolor="w")
 
 
 
+    Python: [<matplotlib.lines.Line2D object at 0x7ddb977b57c0>]
 
 
+
+
+```julia
+
+```

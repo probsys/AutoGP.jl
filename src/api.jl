@@ -1006,11 +1006,17 @@ function predict_mvn_sum(
             noise_pred=noise_pred)
         mu = Distributions.mean(mvn.mvn)
         cov = Distributions.cov(mvn.mvn)
-        # TODO: We must only include the mean in at most ONE of the two
-        # components. For now, the mean is included in all three.
+        # Transform to data space.
         mu, cov = Transforms.unapply_mean_var(model.y_transform, mu, cov)
-        # Remove the mean from the first latent function.
-        # mu[mvn.indexes.F[1]] .+= model.y_transform.intercept / model.y_transform.slope
+        # Avoid double counting the linear offset by removing it from the first
+        # component. Derivation, where Y is data space and X is model space:
+        #   X = aY + b
+        #   X = F1 + F2
+        #   Y = (X-b)/a = F1/a + F2/a -b/a
+        # However, using unapply_mean gives
+        #   Y' = (F1-b)/a + (F2-b)/a = F1/a - b/a + F2/a - b/a
+        # Therefore Y' is double counting by b/a, which we add to F1.
+        mu[mvn.indexes.F[1]] .+= model.y_transform.intercept / model.y_transform.slope
         distributions[particle] = MvNormal(mu, cov)
         # Set the indexes.
         if !isnothing(indexes[1])
