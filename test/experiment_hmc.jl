@@ -32,7 +32,8 @@ Random.seed!(15)
 """Plot forecast of posterior predictive distribution."""
 function plot_posterior_forecast(trace, ts_obs, ts_test, xs_obs, xs_test)
     node = trace[]
-    noise = Model.transform_param(:noise, trace[:noise])
+    config = Gen.get_args(trace)[2]
+    noise = Model.transform_param(:noise, trace[:noise], config)
     dist = Distributions.MvNormal(node, noise + Model.JITTER, ts_obs, xs_obs, ts_test)
     mu = Distributions.mean(dist)
     bounds = Distributions.quantile(dist, [[.1, .9]])
@@ -119,7 +120,7 @@ function test_predictive_likelihood_agrees(config, constraints, ts_obs, xs_obs, 
     constraints_obs[:xs] = xs_obs
     trace_obs, weight_obs = Gen.generate(Model.model, (ts_obs, config), constraints_obs)
     # Ensure agreement.
-    noise = Model.transform_param(:noise, trace_obs[:noise]) + Model.JITTER
+    noise = Model.transform_param(:noise, trace_obs[:noise], config) + Model.JITTER
     dist = Distributions.MvNormal(trace_obs[], noise, ts_obs, xs_obs, ts_test)
     lp_test_ll = Distributions.logpdf(dist, xs_test)
     lp_test_bayes = weight_joint - weight_obs
@@ -166,7 +167,8 @@ end
 
 """Report metrics from the hmc trace."""
 function compute_inference_metrics(trace_infer)
-    noise = Model.transform_param(:noise, trace_infer[:noise])
+    config = Gen.get_args(trace_infer)[2]
+    noise = Model.transform_param(:noise, trace_infer[:noise], config)
     state = (GP.pretty(trace_infer[]), noise)
     score = Gen.get_score(trace_infer)
     dist = Distributions.MvNormal(trace_infer[], noise + Model.JITTER, ts_obs, xs_obs, ts_test)
@@ -188,8 +190,8 @@ test_constrain_structure(config)
 
 # Select benchmark.
 (node_true, noise_true) = BENCHMARKS[2]
-xi_true = Model.untransform_param(:noise, noise_true)
-@assert isapprox(noise_true, Model.transform_param(:noise, xi_true))
+xi_true = Model.untransform_param(:noise, noise_true, config)
+@assert isapprox(noise_true, Model.transform_param(:noise, xi_true, config))
 
 # Simulate ground-truth trace.
 (n, n_obs) = (1000, 200)

@@ -32,14 +32,34 @@ function untransform_logit_normal(param::Real, scale::Real, mu::Real, sigma::Rea
     return (log(param / (scale - param)) - mu) / sigma
 end
 
-transform_param(field::Symbol, z::Real) = @match field begin
-    :gamma  => transform_logit_normal(z, 2, 0, 1)
-    _       => transform_log_normal(z, -1.5, 1.)
+function transform_param(field::Symbol, z::Real, config::GP.GPConfig)
+    @match field begin
+        :gamma   => transform_logit_normal(z,
+                        config.prior[:gamma][:scale],
+                        config.prior[:gamma][:mu],
+                        config.prior[:gamma][:sigma])
+        :period  => transform_log_normal(z,
+                        config.prior[:period][:mu],
+                        config.prior[:period][:sigma])
+        wildcard => transform_log_normal(z,
+                        config.prior[:wildcard][:mu],
+                        config.prior[:wildcard][:sigma])
+    end
 end
 
-untransform_param(field::Symbol, param::Real) = @match field begin
-    :gamma  => untransform_logit_normal(param, 2, 0, 1)
-    _       => untransform_log_normal(param, -1.5, 1.)
+function untransform_param(field::Symbol, param::Real, config::GP.GPConfig)
+    @match field begin
+        :gamma   => untransform_logit_normal(param,
+                        config.prior[:gamma][:scale],
+                        config.prior[:gamma][:mu],
+                        config.prior[:gamma][:sigma])
+        :period  => untransform_log_normal(param,
+                        config.prior[:period][:mu],
+                        config.prior[:period][:sigma])
+        wildcard => untransform_log_normal(param,
+                        config.prior[:wildcard][:mu],
+                        config.prior[:wildcard][:sigma])
+    end
 end
 
 """Return distribution over node types at a given index."""
@@ -71,7 +91,7 @@ end
         params = []
         for field in fieldnames(NodeType)
             log_param  = {(idx, field)} ~ normal(0, 1)
-            param = transform_param(field, log_param)
+            param = transform_param(field, log_param, config)
             push!(params, param)
         end
         node = NodeType(params...)
@@ -93,7 +113,7 @@ end
         # but we should allow such traces to have probability zero
         # (for inference) rather than force an assertion error.
         location = {(idx, :location)} ~ normal(0, 1)
-        param = transform_param(:location, location)
+        param = transform_param(:location, location, config)
         child1 = Gen.get_child(idx, 1, config.max_branch)
         child2 = Gen.get_child(idx, 2, config.max_branch)
         left_node = {*} ~ covariance_prior(child1, config)
@@ -111,7 +131,7 @@ end
     n = length(ts)
     covariance_fn = {:tree} ~ covariance_prior(1, config)
     noise ~ normal(0, 1)
-    noise = transform_param(:noise, noise) + JITTER
+    noise = transform_param(:noise, noise, config) + JITTER
     cov_matrix = GP.compute_cov_matrix_vectorized(covariance_fn, noise, ts)
     xs ~ mvnormal(zeros(n), cov_matrix)
     return covariance_fn

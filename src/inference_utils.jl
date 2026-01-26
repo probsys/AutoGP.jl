@@ -175,10 +175,10 @@ function predict_mvn(
         trace::Gen.Trace,
         ts::Vector{Float64};
         noise_pred::Union{Nothing, Float64}=nothing)
-    ts_train = Gen.get_args(trace)[1]
+    ts_train, config = Gen.get_args(trace)
     xs_train = trace[:xs]
     cov_fn = trace[]
-    noise = Model.transform_param(:noise, trace[:noise]) + Model.JITTER
+    noise = Model.transform_param(:noise, trace[:noise], config) + Model.JITTER
     return Distributions.MvNormal(cov_fn, noise, ts_train, xs_train, ts; noise_pred=noise_pred)
 end
 
@@ -216,7 +216,7 @@ function node_to_choicemap(node::LeafNode, idx::Int, config::GPConfig; params=no
     if isnothing(params) || params
         for field in fieldnames(NodeType)
             param = getfield(node, field)
-            choices[(idx, field)] = Model.untransform_param(field, param)
+            choices[(idx, field)] = Model.untransform_param(field, param, config)
         end
     end
     return choices
@@ -236,7 +236,7 @@ function node_to_choicemap(node::ChangePoint, idx::Int, config::GPConfig; params
     choices = Gen.choicemap()
     choices[(idx, :node_type)] = node_to_integer(node, config)
     if isnothing(params) || params
-        choices[(idx, :location)] = Model.untransform_param(:location, node.location)
+        choices[(idx, :location)] = Model.untransform_param(:location, node.location, config)
     end
     idx_l = Gen.get_child(idx, 1, config.max_branch)
     idx_r = Gen.get_child(idx, 2, config.max_branch)
@@ -278,7 +278,7 @@ function node_to_trace(
     choicemap_node = Gen.choicemap()
     Gen.set_submap!(choicemap_node, :tree, node_to_choicemap(node, config))
     constraints = merge(choicemap_node, choicemap_obs)
-    constraints[:noise] = Model.untransform_param(:noise, noise)
+    constraints[:noise] = Model.untransform_param(:noise, noise, config)
     constraints[:xs] = xs
     return Gen.generate(Model.model, (ts, config), constraints)[1]
 end
