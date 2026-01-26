@@ -394,7 +394,7 @@ function greedy_search_initialize(
     leaf_node_types = get_leaf_node_types(config)
     observations = Gen.choicemap((:xs, xs))
     if !isnothing(config.noise)
-        observations[:noise] = Model.untransform_param(:noise, config.noise)
+        observations[:noise] = Model.untransform_param(:noise, config.noise, config)
     end
     trace, = Gen.generate(Model.model, (ts, config,), observations)
     # Optimize each base kernel.

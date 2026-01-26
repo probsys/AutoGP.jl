@@ -180,7 +180,7 @@ function run_smc_anneal_data(
     @timeit elapsed begin
         observations = Gen.choicemap()
         if !isnothing(config.noise)
-            observations[:noise] = Model.untransform_param(:noise, config.noise)
+            observations[:noise] = Model.untransform_param(:noise, config.noise, config.prior)
         end
         state = Gen.initialize_particle_filter(
                     model,

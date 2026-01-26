@@ -103,7 +103,7 @@ function GPModel(
     # Initialize the particle filter.
     observations = Gen.choicemap((:xs, y_numeric))
     if !isnothing(config.noise)
-        observations[:noise] = Model.untransform_param(:noise, config.noise)
+        observations[:noise] = Model.untransform_param(:noise, config.noise, config)
     end
     pf_state = Gen.initialize_particle_filter(
         Model.model, (ds_numeric, config), observations, n_particles)
@@ -163,7 +163,7 @@ given in the transformed space over which parameter inference is performed
 """
 function observation_noise_variances(model::GPModel; reparameterize::Bool=true)
     noises = [t[:noise] for t in model.pf_state.traces]
-    noises = Model.transform_param.(:noise, noises) .+ AutoGP.Model.JITTER
+    noises = Model.transform_param.(:noise, noises, Ref(model.config)) .+ AutoGP.Model.JITTER
     if reparameterize
         noises = Transforms.unapply_var.([model.y_transform], noises)
     end
@@ -436,7 +436,7 @@ function add_data!(model::GPModel, ds::IndexType, y::Vector{<:Real})
     # Prepare observations.
     observations = Gen.choicemap((:xs, y_numeric))
     if !isnothing(model.config.noise)
-        observations[:noise] = Model.untransform_param(:noise, model.config.noise)
+        observations[:noise] = Model.untransform_param(:noise, model.config.noise, model.config)
     end
     # Run SMC step.
     Inference.smc_step!(model.pf_state, (ds_numeric, model.config), observations)
@@ -461,7 +461,7 @@ function remove_data!(model::GPModel, ds::IndexType)
     # Prepare observations.
     observations = Gen.choicemap((:xs, y_numeric))
     if !isnothing(model.config.noise)
-        observations[:noise] = Model.untransform_param(:noise, config.noise)
+        observations[:noise] = Model.untransform_param(:noise, config.noise, model.config)
     end
     # Run SMC step.
     Inference.smc_step!(model.pf_state, (ds_numeric, model.config), observations)
@@ -736,7 +736,8 @@ function decompose(model::GPModel)
     # ERROR: type GPConfig has no field WhiteNoise
     # noises = Model.transform_param.(
     #         :noise,
-    #         [trace[:noise] for trace in model.pf_state.traces],)
+    #         [trace[:noise] for trace in model.pf_state.traces],
+    #         model.config)
     #     .+ AutoGP.Model.JITTER
     #
     # TODO: Use GPModel(model, kernels) instead of duplicating here.

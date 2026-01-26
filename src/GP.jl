@@ -1129,6 +1129,12 @@ an instance of [`Node`](@ref). The main `kwargs` (all optional) are:
     changepoints::Bool = true
     # Observation noise level.
     noise::Union{Nothing,Float64} = nothing
+    # Parameter customization.
+    prior::Dict{Any,Any} = Dict(
+        :gamma      => Dict(:scale=>2., :mu=>0., :sigma=>1.),
+        :period     => Dict(:mu=>-1.5, :sigma=>1.),
+        :wildcard   => Dict(:mu=>-1.5, :sigma=>1.),
+        )
 end
 
 # Convert index of a node to its depth in tree.
