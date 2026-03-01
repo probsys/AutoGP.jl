@@ -19,6 +19,7 @@ Pkg.develop(PackageSpec(path=joinpath(@__DIR__, "..")))
 Pkg.instantiate()
 
 using Documenter
+using DocumenterVitepress
 using AutoGP
 
 # Build the tutorials.
@@ -29,7 +30,12 @@ using AutoGP
 # Make the documents.
 makedocs(
     sitename="AutoGP",
-    format=Documenter.HTML(prettyurls=false, ansicolor=true),
+    # format=Documenter.HTML(prettyurls=false, ansicolor=true),
+    format = DocumenterVitepress.MarkdownVitepress(
+        repo = "github.com/probsys/AutoGP.jl",
+        devbranch = "main",
+        devurl = "dev",
+    ),
     modules=[AutoGP],
     pages=[
         "Home" => "index.md",
