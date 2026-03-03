@@ -115,13 +115,13 @@ end
     particle_weights(model::GPModel)
 Return vector of normalized particle weights.
 """
-particle_weights(model::GPModel) = Inference.compute_particle_weights(model.pf_state)
+particle_weights(model::GPModel) = Inference.get_norm_weights(model.pf_state)
 
 """
     effective_sample_size(model::GPModel)
 Return effective sample size (ESS) of weighted particle collection.
 """
-effective_sample_size(model::GPModel) = Inference.effective_sample_size(model.pf_state)
+effective_sample_size(model::GPModel) = Inference.get_ess(model.pf_state)
 
 """
     log_marginal_likelihood_estimate(model::GPModel)
@@ -180,6 +180,7 @@ end
         biased::Bool=false,
         adaptive_resampling::Bool=true,
         adaptive_rejuvenation::Bool=false,
+        resampler::Symbol=:multinomial,
         hmc_config::Dict=Dict(),
         verbose::Bool=false,
         check::Bool=false,
@@ -198,6 +199,7 @@ the observed data. Inference is performed using sequential Monte Carlo.
 - `shuffle::Bool=true`: Whether to shuffle indexes `ds` or incorporate data in the given order.
 - `adaptive_resampling::Bool=true`: If `true` resamples based on ESS threshold, else at each step.
 - `adaptive_rejuvenation::Bool=false`: If `true` rejuvenates only if resampled, else at each step.
+- `resampler::Symbol=:multinomial`: Particle resampling method (`:multinomial`, `:stratified`, `:resdiual`).
 - `hmc_config::Dict`: Configuration for HMC inference on numeric parameters. Allowable keys are:
     - `n_exit::Integer=1`: Number of successive rejections after which HMC loop is terminated.
     - `L_param::Integer=10` Number of leapfrog steps for kernel parameters.
@@ -218,6 +220,7 @@ function fit_smc!(
         shuffle::Bool=true,
         adaptive_resampling::Bool=true,
         adaptive_rejuvenation::Bool=false,
+        resampler::Symbol=:multinomial,
         hmc_config=(n_exit=1,),
         verbose::Bool=false,
         check::Bool=false,
@@ -243,6 +246,7 @@ function fit_smc!(
         schedule=schedule,
         adaptive_resampling=adaptive_resampling,
         adaptive_rejuvenation=adaptive_rejuvenation,
+        resampler=resampler,
         verbose=verbose,
         check=check,
         callback_fn=callback_fn)

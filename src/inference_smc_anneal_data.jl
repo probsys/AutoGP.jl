@@ -16,19 +16,12 @@
 
 import Distributions
 
+using GenParticleFilters:
+        get_ess,
+        get_norm_weights,
+        pf_resample!
+
 using Printf: @sprintf
-
-# Return normalized particle weights
-function compute_particle_weights(state::Gen.ParticleFilterState)
-    log_normalized_weights = Gen.normalize_weights(state.log_weights)[2]
-    return exp.(log_normalized_weights)
-end
-
-# Return normalized particle weights
-function effective_sample_size(state::Gen.ParticleFilterState)
-    log_normalized_weights = Gen.normalize_weights(state.log_weights)[2]
-    return Gen.effective_sample_size(log_normalized_weights)
-end
 
 function rejuvenate_particle_parameters(
         trace::Gen.Trace,
@@ -153,6 +146,7 @@ function run_smc_anneal_data(
         schedule::Vector{<:Integer}=range(1:length(ts)),
         adaptive_resampling::Bool=true,
         adaptive_rejuvenation::Bool=false,
+        resampler::Symbol=:multinomial,
         verbose::Bool=false,
         check::Bool=false,
         callback_fn::Function=(; kwargs...) -> nothing)
@@ -218,8 +212,8 @@ function run_smc_anneal_data(
 
             # Report weights.
             verbose && begin
-                w = compute_particle_weights(state)
-                ess = effective_sample_size(state)
+                w = get_norm_weights(state)
+                ess = get_ess(state)
                 wstr = replace(repr(map((x->(@sprintf "%1.2e" x)), w)),"\""=>"")
                 println("Particle Weights: $(wstr)")
                 println("Particle ESS: $(ess/length(state.traces))")
@@ -228,8 +222,9 @@ function run_smc_anneal_data(
             # Resample step.
             resampled = false
             if step < schedule[end]
-                ess_threshold = adaptive_resampling ? n_particles/2 : n_particles
-                resampled = Gen.maybe_resample!(state, ess_threshold=ess_threshold)
+                resampled = !adaptive_resampling ||
+                    get_ess(state) < length(state.traces) / 2
+                resampled && pf_resample!(state, resampler)
                 verbose && println("resampled $(resampled)")
             end
 
