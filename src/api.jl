@@ -472,14 +472,21 @@ function remove_data!(model::GPModel, ds::IndexType)
 end
 
 """
-    maybe_resample!(model::GPModel, ess_threshold::Real)
-Resample the particle collection in `model` if ESS is below `ess_threshold`.
-Setting `ess_threshold = AutoGP.num_particles(model) + 1` will ensure
-that resampling always takes place, since the ESS is upper bounded by
-the number of particles.
+    maybe_resample!(model::GPModel, ess_threshold::Real, method::Symbol=:multinomial)
+
+Resample the particle collection in `model` if the normalized effective
+sample size (ESS) is below `ess_threshold`.
+Setting `ess_threshold = AutoGP.num_particles(model) + 1`
+ensures that resampling always takes place.
+Possible choices of `method` are `[:multinomial, :residual, :stratified]`.
 """
-function maybe_resample!(model::GPModel, ess_threshold::Real)
-    return Gen.maybe_resample!(model.pf_state, ess_threshold=ess_threshold)
+function maybe_resample!(model::GPModel, ess_threshold::Real, method::Symbol=:multinomial)
+    if Inference.get_ess(model.pf_state) < ess_threshold
+        Inference.pf_resample!(model.pf_state, method)
+        return true
+    else
+        return false
+    end
 end
 
 """
