@@ -17,7 +17,8 @@ using Test
 using AutoGP
 
 @testset "AutoGP" begin
-    @testset "test_GP.jl"        begin include("test_GP.jl") end
-    @testset "test_api.jl"       begin include("test_api.jl") end
-    @testset "test_serialize.jl" begin include("test_serialize.jl") end
+    @testset "test_GP.jl"                 begin include("test_GP.jl") end
+    @testset "test_api.jl"                begin include("test_api.jl") end
+    @testset "test_serialize.jl"          begin include("test_serialize.jl") end
+    @testset "test_extensible_config.jl"  begin include("test_extensible_config.jl") end
 end
