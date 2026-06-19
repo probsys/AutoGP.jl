@@ -78,16 +78,10 @@ end
 @gen function covariance_prior(idx::Int, config::GPConfig)
     node_dist = get_node_dist(idx, config)
     node_type = {(idx, :node_type)} ~ categorical(node_dist)
+    NodeType = config.index_to_node[node_type]
 
-    # LeafNode
-    if node_type in [
-            config.Constant,
-            config.Linear,
-            config.SquaredExponential,
-            config.GammaExponential,
-            config.Periodic,
-            ]
-        NodeType = config.index_to_node[node_type]
+    # LeafNode — any registered LeafNode subtype, not a fixed code list
+    if NodeType <: GP.LeafNode
         params = []
         for field in fieldnames(NodeType)
             log_param  = {(idx, field)} ~ normal(0, 1)
@@ -103,7 +97,6 @@ end
         config = GPConfig(config; changepoints=false)
         left_node = {*} ~ covariance_prior(idx_l, config)
         right_node = {*} ~ covariance_prior(idx_r, config)
-        NodeType = config.index_to_node[node_type]
         node = NodeType(left_node, right_node)
 
     # ChangePoint

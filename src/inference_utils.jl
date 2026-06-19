@@ -197,9 +197,11 @@ end
 
 """Convert Node to the integer code."""
 function node_to_integer(node::Node, config::GPConfig)
-    nodename = split(string(typeof(node)), ".")[end]
-    field = Symbol(nodename)
-    return getfield(config, field)
+    T = typeof(node)
+    for (code, NodeType) in config.index_to_node
+        NodeType === T && return code
+    end
+    error("Node type $T is not registered in config.index_to_node")
 end
 
 """Convert Node to Gen.ChoiceMap."""
